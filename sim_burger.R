@@ -16,14 +16,34 @@ source(file="mod_burger.R", encoding ="UTF-8")
 # t_max is the time when the simulation stop (in the paper stop when stable)
 # rec_rate the recombination rate
 
-
-
-amplitude <- 1
-period <- 100
-stoch_magnitude <- 0.2
-strength_selec <- 0.5
+amplitude <- 0.5
+period <- 24
+stoch_magnitude <- 0
+strength_selec <- 5
 mut_rate <- 10^(-6)
-num_loci <- 2
-t_max <- 200
 
-genetic
+num_loci <- 5
+t_max <- 50
+
+# One simulation over the t_max period
+
+initialisation <- genetic_sim(num_loci = num_loci)
+gamette_values <- initialisation[[1]]
+gamette_distr <- initialisation[[2]]
+gamette_scheme <- initialisation [[3]]
+rec_rate <- initialisation[[4]]
+
+dtf_rec <- recombination(num_loci = num_loci, rec_rate = rec_rate)
+
+opti_G <- get_optimum(t_max = t_max, amplitude = amplitude, period = period, 
+            stoch_magnitude = stoch_magnitude)
+
+distr_over_time <- matrix(0, ncol = length(gamette_distr), nrow = t_max + 1)
+distr_over_time[1, ] <- gamette_distr
+for (t in 1:t_max){
+  gamette_distr <- new_distributions(t, num_loci, gamette_distr, gamette_values,
+                                     opti_G, dtf_rec, mut_rate)
+  distr_over_time[t+1, ] <- gamette_distr
+}
+
+

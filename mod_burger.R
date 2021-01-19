@@ -15,7 +15,7 @@ num_to_bin <- function(number, n) {
 
 # initialisation modelling
 
-genetic_sim <- function(rec_rate, num_loci){
+genetic_sim <- function(num_loci){
   rec_rate <- runif(num_loci - 1, 0, 0.5)
   
   loci <- runif(num_loci, 0, 1)
@@ -30,7 +30,7 @@ genetic_sim <- function(rec_rate, num_loci){
   }
   gamette_distr <- runif(nb_gamette, 0, 1)
   gamette_distr <- gamette_distr / sum(gamette_distr)
-  return(list(gamette_values, gamette_distr, gamette_scheme))
+  return(list(gamette_values, gamette_distr, gamette_scheme, rec_rate))
 }
 
 
@@ -52,8 +52,8 @@ get_optimum <- function(t_max, amplitude, period, stoch_magnitude){
 permut_gamette <- function(j_bin, k_bin, rec_vec){
   rec_spot = rec_vec[1]
 
-  j_bin_rec <- c(j_bin[1:rec_spot], k_bin[(a+1):length(j_bin)])
-  k_bin2_rec <- c(k_bin[1:rec_spot], j_bin[(rec_spot+1):length(k_bin)])
+  j_bin_rec <- c(j_bin[1:rec_spot], k_bin[(rec_spot+1):length(j_bin)])
+  k_bin_rec <- c(k_bin[1:rec_spot], j_bin[(rec_spot+1):length(k_bin)])
   if (length(rec_vec) > 1) {
     permut_gamette(j_bin_rec, k_bin_rec, rec_vec[2:length(rec_vec)])
   } else {
@@ -131,8 +131,9 @@ recombination <- function(num_loci, rec_rate){
 
 new_distributions <- function(t, num_loci, gamette_distr, gamette_values,
                               opti_G, dtf_rec, mut_rate){
+  nb_gamette <- 2^num_loci
   p_star <- rep(0, nb_gamette)
-  
+
   mean_fitness = 0
   
   for (j in 1:nb_gamette){
@@ -150,14 +151,13 @@ new_distributions <- function(t, num_loci, gamette_distr, gamette_values,
       for (k in j:nb_gamette){
         
         G <- gamette_values[j] + gamette_values[k]
-        viability_G <- (exp(-strength_selec * ((gamette_values[j]+gamette_values[k]) - opti_G[t])^2) * gamette_distr[j] *
+        viability_G <- (exp(-strength_selec * (G - opti_G[t])^2) * gamette_distr[j] *
                           gamette_distr[k] * dtf_rec[i, paste(j,',',k)]) / mean_fitness 
         p_star[i] <- p_star[i] + viability_G
-        
       } 
     }
   }
-  
+
   for (i in 1:nb_gamette) {
     
     tot_mut <- 0
