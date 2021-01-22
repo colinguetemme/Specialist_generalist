@@ -37,12 +37,12 @@ if (quick_params_selection == 1){
 
 if (quick_params_selection == 2){
   amplitude <- 0.5
-  period <- 50
+  period <- 200
   stoch_magnitude <- 0.2
-  strength_selec <- 20
+  strength_selec <- 1
   mut_rate <- 5*10^(-5)
   num_loci <- 4
-  t_max <- 100
+  t_max <- 1000
 }
 
 if (quick_params_selection == 3){
@@ -61,13 +61,10 @@ if (quick_params_selection == 3){
 one_simul <- function(amplitude, period, stoch_magnitude, strength_selec,
                       mut_rate, num_loci, t_max){
   
-  initialisation <- genetic_sim(num_loci = num_loci)
+  initialisation <- genetic_sim(num_loci = num_loci, haploid = T)
   gamette_values <- initialisation[[1]]
   gamette_distr <- initialisation[[2]]
   gamette_scheme <- initialisation [[3]]
-  rec_rate <- initialisation[[4]]
-  
-  dtf_rec <- recombination(num_loci = num_loci, rec_rate = rec_rate)
 
   opti_G <- get_optimum(t_max = t_max, amplitude = amplitude, period = period, 
                         stoch_magnitude = stoch_magnitude)
@@ -77,26 +74,23 @@ one_simul <- function(amplitude, period, stoch_magnitude, strength_selec,
   mean_fitness_over_time <- rep(0, t_max)
   for (t in 1:t_max){
     opti_Gt <- opti_G[t]
-    new_results <- new_distributions(num_loci, distr_over_time[t, ], gamette_values,
-                                       gamette_scheme, opti_Gt, dtf_rec, mut_rate)
+    new_results <- new_distributions_haploid(num_loci,  distr_over_time[t, ], gamette_values,
+                                     gamette_scheme, opti_Gt, mut_rate)
     distr_over_time[t+1, ] <- new_results[[1]]
-    mean_fitness_over_time[t] <- new_results[[2]]
+
   }
   return(list(distr_over_time[-1,], mean_fitness_over_time, opti_G, gamette_values))
 }
 
 
 simulation <- one_simul(amplitude = amplitude, period = period,
-          stoch_magnitude = stoch_magnitude, strength_selec = strength_selec,
-          mut_rate = mut_rate, num_loci =  num_loci, t_max =  t_max)
+                        stoch_magnitude = stoch_magnitude, strength_selec = strength_selec,
+                        mut_rate = mut_rate, num_loci =  num_loci, t_max =  t_max)
 
 
 plot(simulation[[3]], type = 'l')
-lines(rowSums(t(t(simulation[[1]])*simulation[[4]]*2)), col = 'red')
-
-plot(simulation[[3]], type = 'l')
-lines(simulation[[2]], col = 'blue')
-
+lines(rowSums(t(t(simulation[[1]])*simulation[[4]])), col = 'red')
 
 # Just put this to know when a simulation is over if needed
 # system("xdg-open 'https://www.youtube.com/watch?v=0jgrCKhxE1s'")
+

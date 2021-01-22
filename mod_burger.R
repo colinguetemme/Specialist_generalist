@@ -15,16 +15,17 @@ num_to_bin <- function(number, n) {
 
 # initialisation modelling
 
-genetic_sim <- function(num_loci){
+genetic_sim <- function(num_loci, haploid = F){
   rec_rate <- runif(num_loci - 1, 0, 0.5)
-  
+  ifelse(haploid, haploid <- 1, haploid <- 0.5)
   loci <- runif(num_loci, 0, 1)
-  loci <- 0.5 * loci / sum(loci)
+  loci <- haploid * loci / sum(loci)
   
   nb_gamette <- 2^num_loci
   gamette_values <- rep(0, nb_gamette)
-  gamette_scheme = list(c(0,0,0,0))
-  for (i in 2:(nb_gamette)){
+  gamette_scheme <- list(rep(0, nb_gamette))
+
+  for (i in 1:(nb_gamette)){
     gamette_scheme[[i]] <- num_to_bin(i-1, n = num_loci)
     gamette_values[i] <- sum(loci[as.logical(num_to_bin(i-1, n = num_loci))])
   }
@@ -129,30 +130,30 @@ recombination <- function(num_loci, rec_rate){
 
 # Calculation of all pi_star
 
-new_distributions <- function(t, num_loci, gamette_distr, gamette_values,
-                              opti_G, dtf_rec, mut_rate){
+new_distributions <- function(num_loci, gamette_distr, gamette_values,
+                              gamette_scheme, opti_Gt, dtf_rec, mut_rate){
   nb_gamette <- 2^num_loci
   p_star <- rep(0, nb_gamette)
 
-  mean_fitness = 0
+  mean_fitness <- 0
   
   for (j in 1:nb_gamette){
     for (k in j:nb_gamette){
       
-      mean_fitness = mean_fitness + exp(-strength_selec * ((gamette_values[j]+gamette_values[k]) - opti_G[t])^2) * gamette_distr[j] *
-        gamette_distr[k]
+      mean_fitness <- mean_fitness + exp(-strength_selec *
+                      (gamette_values[j] + gamette_values[k] - opti_Gt)^2) *
+                      gamette_distr[j] * gamette_distr[k]
+      
     }
   }
-  
-  
-  
+
   for (i in 1:nb_gamette){
     for (j in 1:nb_gamette){
       for (k in j:nb_gamette){
         
         G <- gamette_values[j] + gamette_values[k]
-        viability_G <- (exp(-strength_selec * (G - opti_G[t])^2) * gamette_distr[j] *
-                          gamette_distr[k] * dtf_rec[i, paste(j,',',k)]) / mean_fitness 
+        viability_G <- (exp(-strength_selec * (G - opti_Gt)^2) * gamette_distr[j] *
+                          gamette_distr[k] * dtf_rec[i, paste(j,',',k)]) / mean_fitness
         p_star[i] <- p_star[i] + viability_G
       } 
     }
@@ -163,14 +164,41 @@ new_distributions <- function(t, num_loci, gamette_distr, gamette_values,
     tot_mut <- 0
     
     for (j in (1:nb_gamette)[-i]){
-      
       mutation_ij <- mut_rate ^ (sum(gamette_scheme[[i]] != gamette_scheme[[j]]))
       tot_mut <- tot_mut + p_star[j]*mutation_ij - p_star[i]*mutation_ij
     }
     
     gamette_distr[i] <- p_star[i] + tot_mut
   }
-  return(gamette_distr)
+  return(list(gamette_distr, mean_fitness))
+}
+
+new_distributions_haploid <- function(num_loci, gamette_distr, gamette_values,
+                          gamette_scheme, opti_Gt, mut_rate){
+  nb_gamette <- 2^num_loci
+  p_star <- rep(0, nb_gamette)
+  
+
+  for (i in 1:nb_gamette){
+
+      gamette_distr[i] <- exp(-strength_selec * (gamette_values[i] - opti_Gt)^2) * gamette_distr[i]
+
+  }
+
+  
+  for (i in 1:nb_gamette) {
+    
+    tot_mut <- 0
+    
+    for (j in (1:nb_gamette)[-i]){
+      mutation_ij <- mut_rate ^ (sum(gamette_scheme[[i]] != gamette_scheme[[j]]))
+      tot_mut <- tot_mut + gamette_distr[j]*mutation_ij - gamette_distr[i]*mutation_ij
+    }
+    
+    gamette_distr[i] <- gamette_distr[i] + tot_mut
+  }
+  gamette_distr <- gamette_distr / sum(gamette_distr)
+  return(list(gamette_distr))
 }
 
 
