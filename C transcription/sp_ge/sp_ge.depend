@@ -1,6 +1,0 @@
-# depslib dependency file v1.0
-1611159172 source:/home/colin/Documents/aberdeen/codes/C transcription/sp_ge/main.c
-	<stdio.h>
-	<stdlib.h>
-	<math.h>
-
