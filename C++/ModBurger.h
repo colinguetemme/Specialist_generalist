@@ -1,28 +1,66 @@
-#include<iostream> 
-#include<chrono> 
-#include<random> 
-#include<bitset>
+#pragma once
+
+#include <stdio.h>
+#include <stdlib.h>
+//#include <io.h>
+#include <vector>
+#include <algorithm>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <math.h>
+#include <numeric>
+#include <time.h>
+#include <random>
+#include <iterator>
+#include <bitset>
+
 using namespace std; 
-  
-double *rnorm(int n, double mean, double sd) 
-{ 
-    /* Create random engine with the help of seed */
-    unsigned seed = chrono::steady_clock::now().time_since_epoch().count(); 
-    default_random_engine e (seed); 
-  
-    /* declaring normal distribution object 'distN' and initializing its mean and standard deviation fields. */
-  /* Mean and standard deviation are distribution parameters of Normal distribution. Here, we have used mean=5, and standard deviation=2. You can take mean and standard deviation as per your choice */
-    normal_distribution<double> distN(mean ,sd); 
-    
-    double list_rnorm[n];
-    for (int i=1; i<=n; i++)
-    {
-      list_rnorm[i-1] = distN(e);
-      cout<<i<<". "<<list_rnorm[i-1]<<"\n"; 
-    }   
-  double *p_list_rnorm;
-  p_list_rnorm = &list_rnorm[0];
-  std::cout << std::bitset<8>("11011011").to_ulong();
-  return p_list_rnorm;  
-}
+
+//Parameters
+int t; //simulation time  
+
+const int n = 4;
+int ng = pow(2, n);//number of gametes
+
+double u; //mutation rate
+double s; //strength of selection
+double r[n-1]; //recombination rates
+
+int L; //period
+double A; //amplitude of fluctuation
+double d; //magnitude of stochasticity
+
+//Variables
+double opt; //optimum
+
+
+double alpha[n]; //allelic values
+
+vector<double> p; //gamete frequencies
+
+struct rec_table {
+	double jk_table[n][n];  
+};
+vector<rec_table> rec_tables; //gamete values
+
+
+vector<std::string> gametes;
+vector<double> genotypes;
+
+
+// Random numbers generators
+// seed random number generator
+std::random_device rd;
+std::mt19937 rdgen(rd());
+
+std::uniform_real_distribution<> unif(0.0, 1.0);
+
+
+//Functions
+void initialisation(void);
+void recombination(void);
+
 
