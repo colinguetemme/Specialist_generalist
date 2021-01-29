@@ -51,12 +51,12 @@ get_optimum <- function(t_max, amplitude, period, stoch_magnitude){
 # recombination
 
 permut_gamette <- function(j_bin, k_bin, rec_vec){
-  rec_spot = rec_vec[1]
+  rec_spot <- rec_vec[1]
 
   j_bin_rec <- c(j_bin[1:rec_spot], k_bin[(rec_spot+1):length(j_bin)])
   k_bin_rec <- c(k_bin[1:rec_spot], j_bin[(rec_spot+1):length(k_bin)])
   if (length(rec_vec) > 1) {
-    permut_gamette(j_bin_rec, k_bin_rec, rec_vec[2:length(rec_vec)])
+    permut_gamette(j_bin_rec, k_bin_rec, rec_vec[-1])
   } else {
     return(list(j_bin_rec, k_bin_rec))
   }
