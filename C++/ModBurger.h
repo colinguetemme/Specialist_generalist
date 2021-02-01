@@ -15,12 +15,12 @@
 #include <time.h>
 #include <random>
 #include <iterator>
-#include <bits/stdc++.h> 
+#include <bitset> 
 
 using namespace std; 
 
 //Parameters
-int t; //simulation time  
+vector<double> opti_G; //simulation time  
 
 const int n = 4;
 const int nn = n - 1;
@@ -64,10 +64,11 @@ std::uniform_real_distribution<> unif(0.0, 1.0);
 
 
 //Functions
+void new_distributions(void);
 void initialisation(void);
 double recombination(string, string, string);
 vector<string> permut_gamete(string j, string k, vector<int>);
 double jk_i_recombination(string, string, string, vector<double>);
 const string Int2Str(const int x);
 void rec_test(void);
-
+vector<double> environment(int, int, double, double);

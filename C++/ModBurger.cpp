@@ -2,31 +2,23 @@
 
 int main() {
 
-
-
 	int ngg = pow(2.0, nn);
 
-	int** t;
+	// int** t;
 
-	t = new int* [ngg];
-	for (int z = 0; z < ngg; z++) {
-		t[z] = new int[nn];
-		bitset<nn> allele(z);
-		for (int zz = 0; zz < nn; zz++) {
-			t[z][zz] = allele[zz] * (zz+1);
-			cout << t[z][zz] << " ";
-		}
-		cout << endl;
-	}
-
-	string p = "3";
-	string g = "6";
-	string gg = p + g;
-	cout << gg;
-
+	// t = new int* [ngg];
+	// for (int z = 0; z < ngg; z++) {
+	// 	t[z] = new int[nn];
+	// 	std::bitset<nn> allele(z);
+	// 	for (int zz = 0; zz < nn; zz++) {
+	// 		t[z][zz] = allele[zz] * (zz+1);
+	// 		cout << t[z][zz] << " ";
+	// 	}
+	// 	cout << endl;
+	// }
 
 	//initialisation();
-	//rec_test();
+	environment(300, 24, 0.1, 0.5);
 	int x;
 	cin >> x;
 
@@ -34,10 +26,29 @@ int main() {
 }
 
 //------------------------
+
+// environment will define the optimum genotype value through time
+ 
+vector<double> environment (int tmax, int period, double a, double L){
+	opti_G.clear();
+	double var = a * L;
+	std::normal_distribution<> norm(0, var);
+	for (int t = 0; t < tmax; t++){
+		opti_G.push_back(norm(rdgen) + 0.5 + L * sin(2*M_PI*t/period));
+
+		cout << opti_G[t] << endl;
+	}
+	return opti_G;
+}
+
+// initialisation will generate the phenotypic values of each loci, 
+// vector of recombination probabilities and the values of recombination
+// probabilities from gamete j/k to gamete i.
+
 void initialisation(void) {
 	int s, size, g;
-	double sum = 0.0;
 	string bin;
+	double sum = 0.0;
 
 	alpha[0] = unif(rdgen);
 	sum += alpha[0];
@@ -45,7 +56,7 @@ void initialisation(void) {
 	for (int i = 0; i < n-1; i++) {
 		alpha[i+1] = unif(rdgen); //initialise alleles
 		sum += alpha[i+1];
-
+		r.push_back(0.0);
 		r[i] = unif(rdgen) / 2.0; //initialise recombination rate
 	}
 	cout << "Allelic values: " << endl;
@@ -61,7 +72,7 @@ void initialisation(void) {
 	//initialise gametes
 	for (int i = 0; i < ng; i++) {
 		
-        bitset<n> alleles(i);
+        std::bitset<n> alleles(i);
 		gametes.push_back(alleles.to_string<char,std::string::traits_type,std::string::allocator_type>());
 		sum = 0.0;
 
@@ -88,30 +99,34 @@ void initialisation(void) {
 
 }
 
-
-
 double jk_i_recombination(string i, string j, string k, vector<double> rec) {
 
-	double R = 0.0;
+	double R = 0.0; // final probability of recombination btw j, k, and i
 	double prod = 1.0;
-	int ngg = pow(2.0, nn);
-	int sum;
-	int** t;
+	int ngg = pow(2.0, nn); // number of possible recombinations combinations
+	int** t; // table of all recombinations
 
-	vector<int> rec_vec;
-	vector<string> jk;
+	vector<int> rec_vec; // all recombinations possibilities
+	vector<string> jk; // binary of new j and k
 
 	t = new int *[ngg];
-	for (int z = 0; z < ngg; z++) {
+	for (int z = 0; z < ngg; z++) { // z go trough all cmb of recombinations
+		rec_vec.clear();
 		t[z] = new int[nn];
-		bitset<nn> allele(z);
-		sum = 0;
-		for (int zz = 0; zz < nn; zz++) {
+		std::bitset<nn> allele(z);
+		for (int zz = 0; zz < nn; zz++) { // zz go trhough all the rec_pos
 			t[z][zz] = allele[zz] * (zz + 1);
 			if (t[z][zz] > 0) rec_vec.push_back(t[z][zz]);
 		}
 
-		if (z == 0) jk = permut_gamete(j, k, rec_vec);
+		if (z > 0) {
+			jk = permut_gamete(j, k, rec_vec);
+			// cout << j << " vs " << k << " vs " << endl;
+			// for (int b = 0; b < rec_vec.size(); b++){
+			// 	cout << rec_vec[b];
+			// }
+			// cout << endl;
+		} 
 		else {
 			jk.push_back(j);
 			jk.push_back(k);
@@ -120,6 +135,7 @@ double jk_i_recombination(string i, string j, string k, vector<double> rec) {
 
 		for (int a = 0; a < 2; a++) {
 			if (jk[a] == i) {
+
 				int rv = 0;
 				prod = 1.0;
 				for (int zz = 0; zz < (int)r.size(); zz++) {
@@ -130,12 +146,13 @@ double jk_i_recombination(string i, string j, string k, vector<double> rec) {
 					else prod *= 1.0 - r[zz];
 				}
 				R += 0.5 * prod;
+				
 			}
 		}
 
 
 	}
-
+	//cout << R << endl;
 	return R;
 }
 
@@ -162,17 +179,6 @@ vector<string> permut_gamete(string j, string k, vector<int> rec) {
 
 	return jk;
 }
-
-
-
-
-
-
-
-
-
-
-
 
 
 double recombination(string j, string k, string i) {
@@ -219,19 +225,3 @@ double recombination(string j, string k, string i) {
 	return R;
 }
 
-
-
-
-	
-
-/*
-rec_table recombination_table(int i){
-	for (int j = 0; j < n; j++){
-		for (int k = j; k < n; k++){
-			for (int l = 0; l < (n-1); l++){
-				
-			}
-		}
-	}
-}
-*/
