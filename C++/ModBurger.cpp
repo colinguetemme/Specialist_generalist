@@ -27,6 +27,8 @@ int main() {
 
 //------------------------
 
+
+
 // environment will define the optimum genotype value through time
  
 vector<double> environment (int tmax, int period, double a, double L){
@@ -225,3 +227,42 @@ double recombination(string j, string k, string i) {
 	return R;
 }
 
+void new_distributions(vector<double> gamete_values,
+ vector<double> gamete_distr, double mut_rate, vector<string> gam_bin){
+
+int ng = pow(2, n);
+vector<double> p_star(ng);
+double mean_fitness = 0;
+double opti_Gt = 2; //!//
+for (int j = 0; j<ng; j++){
+	for (int k = j; k<ng; k++){
+		mean_fitness += exp(-s * gamete_values[j] + gamete_values[k] - pow(opti_Gt, 2)) * gamete_distr[j] * gamete_distr[k];
+	}
+}
+
+double W = 0;
+for (int i = 0; i<ng; i++){
+	for (int j = 0; j<ng; j++){
+		for (int k = j; k<ng; k++){
+			W += exp(-s * gamete_values[j] + gamete_values[k] - pow(opti_Gt, 2)) * gamete_distr[j] * gamete_distr[k] * dtf_rec[i][j][k] / mean_fitness; //!//
+		}
+	}
+}
+
+double mutation_ij = 0;
+double tot_mut = 0;
+for (int i = 0; i<ng; i++){
+	
+	for (int j = 0; j<ng; j++){
+		int nm = 0;
+		if (i != j) {
+			for (int z = 0; z<n; z++){
+				if (gam_bin[i][z] != gam_bin[j][z]) nm++;
+			}
+			mutation_ij = pow(mut_rate, nm);
+		  	tot_mut += tot_mut + p_star[j]*mutation_ij - p_star[i]*mutation_ij;
+		}
+	}
+}
+
+}

@@ -1,0 +1,383 @@
+---
+title: "Diversity level in time varying environment"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## the article from Burger (2002)
+
+The article on which is based this code can be find at [Burger(2002)](https://www.cambridge.org/core/services/aop-cambridge-core/content/view/6AB0F0FA0C6991AAC624A26549D110EC/S0016672302005682a.pdf/div-class-title-fluctuating-environments-and-the-role-of-mutation-in-maintaining-quantitative-genetic-variation-div.pdf).
+
+In summary, Burger
+
+## Description of the functions
+
+### The time variation function
+
+The first thing needed is the time fluctuating environment. Burger described the optimal genotype in the environment following a sinus function. To this sinus function will be add stochasticity (sampled in a normal distribution).
+
+So we need 4 parameters:
+the amplitude of the variation,
+the period between two cycles,
+the magnitude of the stochasticity parameter,
+the time to stop the simulation.
+
+A good set of values to start could be
+
+```{r}
+rm(list = ls())
+
+
+amplitude <- 0.5
+period <- 50
+stoch_magnitude <- 0.1
+t_max <- 200
+```
+
+we then describe the function that will generate 
+
+```{r}
+get_optimum <- function(t_max, amplitude, period, stoch_magnitude){
+  opti_G <- 1:t_max
+  opti_G <- lapply(opti_G,
+                   function(t) {rnorm(1, 0.5 + amplitude * sin(2*pi*t/period),
+                                              stoch_magnitude * amplitude)})
+  return(unlist(opti_G))
+}
+```
+
+leading in our case to a plot like this
+
+```{r, echo = FALSE}
+opti_G <- get_optimum(t_max, amplitude, period, stoch_magnitude)
+plot(opti_G, type = 'l')
+```
+
+When doing a big number of simulations, like 4000 in the article of Burger, we will calculate the next value at each time step rather than the complete timeline, because we can stop the simulation when we reach an equilibrium saving a lot of calculation in many cases.
+
+### Generate the genetics values
+
+We will also need a function that will generate the value of each positive allele, as well as the recombination probabilities. But mostly, what is relevant is to get the description of every possible gametes and their phenotypic values.
+
+So we will describe the following function
+```{r}
+genetic_sim <- function(num_loci){
+  # following codes
+  }
+```
+```{r, include = FALSE}
+genetic_sim <- function(num_loci, haploid = F){
+  
+  nb_gamete <- 2^num_loci
+  
+  rec_rate <- runif(num_loci-1, 0, 0.5)
+  ifelse(haploid, haploid <- 1, haploid <- 0.5)
+  loci <- runif(num_loci, 0, 1)
+  
+  # scale the loci values to get a heterozygote of phenotypic value 0.5.
+  loci <- haploid * loci / sum(loci)
+  
+  # initialize the gamete values and scheme (allelic composition)
+  gamete_values <- rep(0, nb_gamete)
+  gamete_scheme <- list(rep(0, nb_gamete))
+  
+  for (i in 1:(nb_gamete)){
+    gamete_scheme[[i]] <- num_to_bin(i-1, n = num_loci)
+    gamete_values[i] <- sum(loci[as.logical(num_to_bin(i-1, n = num_loci))])
+  }
+  gamete_distr <- runif(nb_gamete, 0, 1)
+  gamete_distr <- gamete_distr / sum(gamete_distr)
+  
+  return(list(gamete_values, gamete_distr, gamete_scheme, rec_rate))
+}
+```
+So we first start to generate the positive alleles values. Which are sampled from a uniform distribution (btw 0 and 1) and then scaled to sum up to 0.5.
+
+```{r}
+# input in the function #
+num_loci <- 4
+#########################
+
+loci <- runif(num_loci, 0, 1)
+loci <- 0.5 * loci / sum(loci)
+print(loci)
+```
+
+From there we can describe every possible gametes. Because the loci are diallelic, the number of possible combinations of alleles will be $2^{n}$.
+
+```{r}
+nb_gamete <- 2^num_loci
+```
+Then considering the positive allele corresponds to a 1 and the null allele to a 0, we describe every gamete as a binary value, in fact the binary values from 0 to the number of gametes will represent every allelic combinations.
+In that aim the function num_to_bin(i, n) will return a vector of size n of the binary of the decimal number i.
+```{r, include = FALSE}
+num_to_bin <- function(number, n) {
+  bin_vector <- rev(as.numeric(intToBits(number)))
+  if(missing(n)) {
+    return(bin_vector)
+  } else {
+    bin_vector[-(1:(length(bin_vector) - n))]
+  }
+}
+```
+```{r}
+num_to_bin(6, 5)
+```
+So we have
+
+```{r}
+
+gamete_values <- rep(0, nb_gamete)
+gamete_scheme <- list(rep(0, nb_gamete))
+
+
+for (i in 1:(nb_gamete)){
+  gamete_scheme[[i]] <- num_to_bin(i-1, n = num_loci)
+  print(gamete_scheme[[i]])
+  # we then sum up all the allele values that corresponds to a 1
+  gamete_values[i] <- sum(loci[as.logical(num_to_bin(i-1, n = num_loci))])
+}
+
+```
+
+We then can generate the initial probabilities of gametes
+
+```{r}
+gamete_distr <- runif(nb_gamete, 0, 1)
+gamete_distr <- gamete_distr / sum(gamete_distr)
+print(gamete_distr)
+```
+Finally we can generate the recombination rate between two adjacent loci for every pair of adjacent loci as
+
+```{r}
+rec_rate <- runif(num_loci-1, 0, 0.5)
+print(rec_rate)
+
+# return(list(gamete_values, gamete_distr, gamete_scheme, rec_rate))
+```
+
+### The recombination function
+
+The recombination function is something we really want to calculate once for all before the simulation since its a quite heavy function. We need first a function that will actually perform recombination for two given gametes.
+
+If we want to transform two gametes considering a list of recombination position we can use a recursive function (or for() loop) to go through all re combination.
+
+```{r}
+permut_gamete <- function(j_bin, k_bin, rec_vec){
+  
+  # Consider the first value of the vector of recombination position
+  rec_spot <- rec_vec[1]
+  
+  # Do the recombination
+  j_bin_rec <- c(j_bin[1:rec_spot], k_bin[(rec_spot+1):length(j_bin)])
+  k_bin_rec <- c(k_bin[1:rec_spot], j_bin[(rec_spot+1):length(k_bin)])
+  
+  if (length(rec_vec) > 1) {
+    # Recall the function for the next value of the rec_vec
+    permut_gamete(j_bin_rec, k_bin_rec, rec_vec[-1])
+  } else {
+    return(list(j_bin_rec, k_bin_rec))
+  }
+}
+```
+```{r}
+permut_gamete(c(1, 0, 0, 1), c(0, 0, 1, 1), c(1, 3))
+```
+
+Then we can build the function that will calculate the probability to get the gamete i considering the allele j and k.
+
+This function will build all the combination of recombination and give them to the permut_gamete() function. This is what l stand for. The next if else condition will check if their is a recombination. Finally the last two if will check if the new gametes are equal to i.
+```{r}
+jk_i_recombination <- function(i_bin, j_bin, k_bin, rec_rate){
+  R_jk_to_i <- 0
+  n <- length(rec_rate)
+  l <- rep(list(0:1), n)
+  l <- expand.grid(l)
+  l <- t((1:(num_loci-1))*t(l))
+  for (t in 1:nrow(l)){
+    
+    rec_vec = l[t, ]
+
+    if (sum(rec_vec)>0){
+      rec_vec <- unlist(lapply(rec_vec, function(x) {x[x!=0]}))
+      jk <- permut_gamete(j_bin, k_bin, rec_vec)
+
+    } else {
+      jk <- list(j_bin, k_bin)
+      rec_vec <- -(1:(num_loci-1))
+    }
+    
+    if (all(jk[[1]] == i_bin)){
+      R_jk_to_i <- R_jk_to_i + 0.5 * prod(rec_rate[rec_vec]) * prod(1-rec_rate[-rec_vec])
+    }
+    if (all(jk[[2]] == i_bin)){
+      R_jk_to_i <- R_jk_to_i + 0.5 * prod(rec_rate[rec_vec]) * prod(1-rec_rate[-rec_vec])
+    }
+  } 
+
+  return(R_jk_to_i)
+}
+```
+
+And the last function we will need is a function that does this for every combination of j, k and i. So it will basically creates a big dataframe and add the probability to have the gamete i considering a pair j and k of gametes, which corresponds to the 3 for() loops.
+
+```{r}
+recombination <- function(num_loci, rec_rate){
+  
+  prob_rec <- matrix(0, ncol = 2^num_loci, nrow = 2^(num_loci*2))
+  index <- 0
+  nb_gamete <- 2^num_loci
+  names_cmb <- NULL
+  
+  for (j in 1:nb_gamete - 1){
+    
+    j_bin <- num_to_bin(j, num_loci)
+    
+    for (k in j:(nb_gamete - 1)){
+      
+      k_bin <- num_to_bin(k, num_loci)
+      names_cmb = c(names_cmb, paste(j+1,',',k+1))
+      index <- index + 1
+      
+      for (i in 1:nb_gamete-1){
+        
+        i_bin <- num_to_bin(i, num_loci)
+        prob_rec[index, i+1] <- jk_i_recombination(i_bin, j_bin, k_bin,
+                                                   rec_rate)
+      }
+    }
+  }
+  
+  prob_rec <- prob_rec[1:length(names_cmb), ]
+  dtf_rec <- data.frame(t(prob_rec))
+  names(dtf_rec) <- names_cmb
+  return(dtf_rec)
+}
+```
+
+```{r}
+rec_rate <- runif(2, 0, 0.5)
+num_loci <- 3
+recombination(num_loci, rec_rate)
+```
+
+
+### doing the simulation
+
+So it is a function in 3 steps, first we calculate the mean fitness of your actual population, then you calculate the p_star which corresponds to the eqn xx in the paper of burger 2002, it will consider the survival rate and the recombination probabilities. Then we add the mutation, and with that the probabilities to go from one gamete to another. Which corresponds to the mutation rate power the number of differences between the two gametes.
+
+```{r, include = FALSE}
+new_distributions <- function(num_loci, gamete_distr, gamete_values,
+                              gamete_scheme, opti_Gt, dtf_rec, mut_rate){
+  nb_gamete <- 2^num_loci
+  p_star <- rep(0, nb_gamete)
+
+  mean_fitness <- 0
+  
+  # Calculate the mean fitness
+  for (j in 1:nb_gamete){
+    for (k in j:nb_gamete){
+      
+      mean_fitness <- mean_fitness + exp(-strength_selec *
+                      (gamete_values[j] + gamete_values[k] - opti_Gt)^2) *
+                      gamete_distr[j] * gamete_distr[k]
+      
+    }
+  }
+  
+  # Calculate p_star
+  for (i in 1:nb_gamete){
+    for (j in 1:nb_gamete){
+      for (k in j:nb_gamete){
+        
+        G <- gamete_values[j] + gamete_values[k]
+        viability_G <- (exp(-strength_selec * (G - opti_Gt)^2) * gamete_distr[j] * gamete_distr[k] * dtf_rec[i, paste(j,',',k)]) / mean_fitness
+        p_star[i] <- p_star[i] + viability_G
+      } 
+    }
+  }
+  
+  # Calculate the mutations
+  for (i in 1:nb_gamete) {
+    
+    tot_mut <- 0
+    
+    for (j in (1:nb_gamete)[-i]){
+      mutation_ij <- mut_rate ^ (sum(gamete_scheme[[i]] != gamete_scheme[[j]]))
+      tot_mut <- tot_mut + p_star[j]*mutation_ij - p_star[i]*mutation_ij
+    }
+    
+    gamete_distr[i] <- p_star[i] + tot_mut
+  }
+  return(list(gamete_distr, mean_fitness))
+}
+```
+
+```{r}
+
+amplitude <- 0.2
+period <- 30
+stoch_magnitude <- 0.3
+strength_selec <- 20
+mut_rate <- 5*10^(-4)
+num_loci <- 3
+t_max <- 200
+
+
+
+# One simulation over the t_max period
+
+one_simul <- function(amplitude, period, stoch_magnitude, strength_selec,
+                      mut_rate, num_loci, t_max){
+  
+  initialisation <- genetic_sim(num_loci = num_loci)
+  gamete_values <- initialisation[[1]]
+  gamete_distr <- initialisation[[2]]
+  gamete_scheme <- initialisation [[3]]
+  rec_rate <- initialisation[[4]]
+  
+  dtf_rec <- recombination(num_loci = num_loci, rec_rate = rec_rate)
+
+  opti_G <- get_optimum(t_max = t_max, amplitude = amplitude, period = period, 
+                        stoch_magnitude = stoch_magnitude)
+  
+  distr_over_time <- matrix(0, ncol = length(gamete_distr), nrow = t_max+1)
+  distr_over_time[1, ] <- gamete_distr
+  mean_fitness_over_time <- rep(0, t_max)
+  for (t in 1:t_max){
+    opti_Gt <- opti_G[t]
+    new_results <- new_distributions(num_loci, distr_over_time[t, ], gamete_values,
+                                       gamete_scheme, opti_Gt, dtf_rec, mut_rate)
+    distr_over_time[t+1, ] <- new_results[[1]]
+    mean_fitness_over_time[t] <- new_results[[2]]
+  }
+  return(list(distr_over_time[-1,], mean_fitness_over_time, opti_G, gamete_values))
+}
+
+
+simulation <- one_simul(amplitude = amplitude, period = period,
+          stoch_magnitude = stoch_magnitude, strength_selec = strength_selec,
+          mut_rate = mut_rate, num_loci =  num_loci, t_max =  t_max)
+
+
+plot(simulation[[3]], type = 'l')
+lines(rowSums(t(t(simulation[[1]])*simulation[[4]]*2)), col = 'red')
+
+plot(simulation[[3]], ylim = c(0, 1), type = 'l')
+lines(simulation[[1]][,1 ], col = 'blue')
+lines(simulation[[1]][,2 ], col = 'blue')
+lines(simulation[[1]][,3 ], col = 'blue')
+lines(simulation[[1]][,4 ], col = 'blue')
+lines(simulation[[1]][,5 ], col = 'red')
+lines(simulation[[1]][,6 ], col = 'red')
+lines(simulation[[1]][,7 ], col = 'red')
+lines(simulation[[1]][,8 ], col = 'red')
+
+plot(simulation[[3]], type = 'l', ylim = c(0,1))
+lines(simulation[[2]], col = 'blue')
+
+```

@@ -62,9 +62,9 @@ one_simul <- function(amplitude, period, stoch_magnitude, strength_selec,
                       mut_rate, num_loci, t_max){
   
   initialisation <- genetic_sim(num_loci = num_loci)
-  gamette_values <- initialisation[[1]]
-  gamette_distr <- initialisation[[2]]
-  gamette_scheme <- initialisation [[3]]
+  gamete_values <- initialisation[[1]]
+  gamete_distr <- initialisation[[2]]
+  gamete_scheme <- initialisation [[3]]
   rec_rate <- initialisation[[4]]
   
   dtf_rec <- recombination(num_loci = num_loci, rec_rate = rec_rate)
@@ -72,17 +72,17 @@ one_simul <- function(amplitude, period, stoch_magnitude, strength_selec,
   opti_G <- get_optimum(t_max = t_max, amplitude = amplitude, period = period, 
                         stoch_magnitude = stoch_magnitude)
   
-  distr_over_time <- matrix(0, ncol = length(gamette_distr), nrow = t_max+1)
-  distr_over_time[1, ] <- gamette_distr
+  distr_over_time <- matrix(0, ncol = length(gamete_distr), nrow = t_max+1)
+  distr_over_time[1, ] <- gamete_distr
   mean_fitness_over_time <- rep(0, t_max)
   for (t in 1:t_max){
     opti_Gt <- opti_G[t]
-    new_results <- new_distributions(num_loci, distr_over_time[t, ], gamette_values,
-                                       gamette_scheme, opti_Gt, dtf_rec, mut_rate)
+    new_results <- new_distributions(num_loci, distr_over_time[t, ], gamete_values,
+                                       gamete_scheme, opti_Gt, dtf_rec, mut_rate)
     distr_over_time[t+1, ] <- new_results[[1]]
     mean_fitness_over_time[t] <- new_results[[2]]
   }
-  return(list(distr_over_time[-1,], mean_fitness_over_time, opti_G, gamette_values))
+  return(list(distr_over_time[-1,], mean_fitness_over_time, opti_G, gamete_values))
 }
 
 
