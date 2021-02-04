@@ -45,16 +45,18 @@ vector<double> p; //gamete frequencies
 //table of recombination probabilities
 double*** rec_table;
 
-struct init{
-   vector<double> gamete_values;
-   vector<double> gamete_distr;
-   vector<string> gamete_scheme;
-   vector<vector<vector<double>>> rec_table; 
-};
+//struct rec_table {
+//	double jk_table[n][n];  
+//};
+//vector<rec_table> rec_tables; //gamete values
+
 
 vector<std::string> gametes;
 vector<double> genotypes;
 
+struct ijkstruct{
+	
+}
 
 // Random numbers generators
 // seed random number generator
@@ -65,10 +67,9 @@ std::uniform_real_distribution<> unif(0.0, 1.0);
 
 
 //Functions
-vector<double> new_distributions(vector<double> , vector<vector<vector<double>>>,
-					   vector<double>, double , vector<string>, double, double);
-init initialisation(void);
-vector<vector<vector<double>>> recombination(vector<double> rec_rate);
+void new_distributions(void);
+void initialisation(void);
+double recombination(string, string, string);
 vector<string> permut_gamete(string j, string k, vector<int>);
 double jk_i_recombination(string, string, string, vector<double>);
 const string Int2Str(const int x);
