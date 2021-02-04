@@ -2,30 +2,41 @@
 
 int main(){
 
-	int ngg = pow(2.0, nn);
-	double s = 10;
+	string filename = "results/n";
+	filename.append(to_string(n));
+	filename.append("s");
+	filename.append(to_string(int(s)));
+	filename.append(".csv");
+	cout << filename;
+	// + "n" + to_string(n) + "s" + to_string(s)
+	//		+ "L" + to_string(L) + "d" + to_string(d) + "A" + to_string(A) + ".csv";
 
-	//initialisation();
+	std::ofstream outfile (filename);
+
+	// Initialze a genetics set and a environment
+	// with the parameters from ModBuerger.h
 	init init_values = initialisation();
-	vector<double> opti_G = environment(200, 24, 0.2, 0.7);
-	vector<double> newdistr;
+	vector<double> opti_G = environment(tmax, L, d, A);
 
-
+	// Initialze the variable which will stock the distributions
+	// of the gametes through the time
 	vector<vector<double>> all_distr(opti_G.size()+1, vector<double>(ng, 0));
 	all_distr[0] = init_values.gamete_distr;
-	cout << "distri" << endl;
+
+	// Does the simulation
 	for (int t = 0; t<opti_G.size(); t++){
-		newdistr = new_distributions(init_values.gamete_values, init_values.rec_table, all_distr[t], 0.00002, init_values.gamete_scheme, opti_G[t], s);
-		all_distr[t+1] = newdistr;
-		//cout << "E: "<< opti_G[t] << endl;
-		cout << all_distr[t+1][3] << "\t";
+		all_distr[t+1] = new_distributions(init_values.gamete_values, init_values.rec_table, all_distr[t], 0.00002, init_values.gamete_scheme, opti_G[t], s);
+		outfile << t << "\t";
+		outfile << opti_G[t] << "\t";
+		for (int z = 0; z<ng; z++){
+			outfile << all_distr[t+1][z] << "\t";
+		}
+		outfile << "\n";	
+	}	
 
-	cout << endl;	
-	}
+	// creates the output files with the results
 
-	int x;
-	cin >> x;
-
+	outfile.close();
 	return 0;
 }
 
@@ -129,7 +140,7 @@ double jk_i_recombination(string i, string j, string k, vector<double> r)
 
 	double R = 0.0; // final probability of recombination btw j, k, and i
 	double prod = 1.0;
-	int ngg = pow(2.0, nn); // number of possible recombinations combinations
+	//int ngg = pow(2.0, nn); // number of possible recombinations combinations
 	int **t;				// table of all recombinations
 
 	vector<int> rec_vec; // all recombinations possibilities
@@ -215,27 +226,6 @@ vector<string> permut_gamete(string j, string k, vector<int> rec)
 	return jk;
 }
 
-// vector<vector<vector<double>>> recombination(vector<double> rec_rate)
-// {
-// 	vector<vector<vector<double>>> rec_table(ng, (vector<vector<double>>(ng, (vector<double>(ng, 0)))));
-
-// 	for (int i = 0; i<ng; i++){
-// 		std::bitset<n> i_bit(i);
-// 		string i_bin = i_bit.to_string<char, std::string::traits_type, std::string::allocator_type>();
-// 		for (int j = 0; j <ng;  j++){
-// 			std::bitset<n> j_bit(j);
-// 			string j_bin = j_bit.to_string<char, std::string::traits_type, std::string::allocator_type>();
-// 			for (int k = 0; k<ng; k++){
-// 				std::bitset<n> k_bit(k);
-// 				string k_bin = k_bit.to_string<char, std::string::traits_type, std::string::allocator_type>();
-// 				rec_table[i][j][k] = jk_i_recombination(i_bin, j_bin, k_bin, rec_rate);
-// 				cout << rec_table[i][j][k] << endl;
-// 			}
-// 		}
-// 	}
-// 	return rec_table;
-// }
-
 vector<double> new_distributions(vector<double> gamete_values, vector<vector<vector<double>>> dtf_rec,
 					   vector<double> gamete_distr, double mut_rate, vector<string> gam_bin, double opti_Gt, double strength)
 {
@@ -247,7 +237,7 @@ vector<double> new_distributions(vector<double> gamete_values, vector<vector<vec
 	{
 		for (int k = j; k < ng; k++)
 		{
-			mean_fitness += exp(-s * gamete_values[j] + gamete_values[k] - pow(opti_Gt, 2)) * gamete_distr[j] * gamete_distr[k];
+			mean_fitness += exp(-s * pow(gamete_values[j] + gamete_values[k] - opti_Gt, 2)) * gamete_distr[j] * gamete_distr[k];
 		}
 	}
 	// cout << mean_fitness << endl;
