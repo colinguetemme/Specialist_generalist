@@ -1,25 +1,28 @@
 #include "ModBurger.h"
 
-int main()
-{
+int main(){
 
 	int ngg = pow(2.0, nn);
-
-	// int** t;
-
-	// t = new int* [ngg];
-	// for (int z = 0; z < ngg; z++) {
-	// 	t[z] = new int[nn];
-	// 	std::bitset<nn> allele(z);
-	// 	for (int zz = 0; zz < nn; zz++) {
-	// 		t[z][zz] = allele[zz] * (zz+1);
-	// 		cout << t[z][zz] << " ";
-	// 	}
-	// 	cout << endl;
-	// }
+	double s = 10;
 
 	//initialisation();
-	environment(300, 24, 0.1, 0.5);
+	init init_values = initialisation();
+	vector<double> opti_G = environment(200, 24, 0.2, 0.7);
+	vector<double> newdistr;
+
+
+	vector<vector<double>> all_distr(opti_G.size()+1, vector<double>(ng, 0));
+	all_distr[0] = init_values.gamete_distr;
+	cout << "distri" << endl;
+	for (int t = 0; t<opti_G.size(); t++){
+		newdistr = new_distributions(init_values.gamete_values, init_values.rec_table, all_distr[t], 0.00002, init_values.gamete_scheme, opti_G[t], s);
+		all_distr[t+1] = newdistr;
+		//cout << "E: "<< opti_G[t] << endl;
+		cout << all_distr[t+1][3] << "\t";
+
+	cout << endl;	
+	}
+
 	int x;
 	cin >> x;
 
@@ -30,16 +33,15 @@ int main()
 
 // environment will define the optimum genotype value through time
 
-vector<double> environment(int tmax, int period, double a, double L)
+vector<double> environment(int tmax, int period, double d, double L)
 {
 	opti_G.clear();
-	double var = a * L;
+	double var = d * L;
 	std::normal_distribution<> norm(0, var);
 	for (int t = 0; t < tmax; t++)
 	{
 		opti_G.push_back(norm(rdgen) + 0.5 + L * sin(2 * M_PI * t / period));
 
-		cout << opti_G[t] << endl;
 	}
 	return opti_G;
 }
@@ -48,8 +50,9 @@ vector<double> environment(int tmax, int period, double a, double L)
 // vector of recombination probabilities and the values of recombination
 // probabilities from gamete j/k to gamete i.
 
-void initialisation(void)
-{
+init initialisation(void)
+{	
+	init init_values;
 	int s, size, g;
 	string bin;
 	double sum = 0.0;
@@ -64,16 +67,14 @@ void initialisation(void)
 		r.push_back(0.0);
 		r[i] = unif(rdgen) / 2.0; //initialise recombination rate
 	}
-	cout << "Allelic values: " << endl;
+	// cout << "Allelic values: " << endl;
 	for (int i = 0; i < n; i++)
 	{
 		alpha[i] = 0.5 * alpha[i] / sum; //scale alleles
 
-		cout << alpha[i] << " ";
+		// cout << alpha[i] << " ";
 	}
-	cout << endl;
-
-	cout << "Gametes: " << endl;
+	// cout << endl;
 
 	//initialise gametes
 	for (int i = 0; i < ng; i++)
@@ -89,26 +90,41 @@ void initialisation(void)
 				sum += alpha[j];
 		}
 		genotypes.push_back(sum);
-		cout << sum << "\t";
 	}
 
 	//initiliase recombination table
-	rec_table = new double **[ng];
+	vector<vector<vector<double>>> rec_table(ng, (vector<vector<double>>(ng, (vector<double>(ng, 0)))));
 	for (int j = 0; j < ng; j++)
 	{
-		rec_table[j] = new double *[ng];
 		for (int k = 0; k < ng; k++)
 		{
-			rec_table[j][k] = new double[ng];
 			for (int i = 0; i < ng; i++)
 			{
 				rec_table[j][k][i] = jk_i_recombination(gametes[i], gametes[j], gametes[k], r);
 			}
 		}
 	}
+
+	sum = 0;
+	vector<double> distr;
+	double x;
+	for (int i = 0; i<ng; i++){
+		x = unif(rdgen);
+		distr.push_back(x);
+		sum += x;
+	}
+	for (int i = 0; i<ng; i++){
+		distr[i] /= sum;
+	}
+
+	init_values.gamete_values = genotypes;
+	init_values.gamete_distr = distr;
+	init_values.gamete_scheme = gametes;
+	init_values.rec_table = rec_table;
+	return init_values;
 }
 
-double jk_i_recombination(string i, string j, string k, vector<double> rec)
+double jk_i_recombination(string i, string j, string k, vector<double> r)
 {
 
 	double R = 0.0; // final probability of recombination btw j, k, and i
@@ -135,11 +151,6 @@ double jk_i_recombination(string i, string j, string k, vector<double> rec)
 		if (z > 0)
 		{
 			jk = permut_gamete(j, k, rec_vec);
-			// cout << j << " vs " << k << " vs " << endl;
-			// for (int b = 0; b < rec_vec.size(); b++){
-			// 	cout << rec_vec[b];
-			// }
-			// cout << endl;
 		}
 		else
 		{
@@ -204,75 +215,34 @@ vector<string> permut_gamete(string j, string k, vector<int> rec)
 	return jk;
 }
 
-double recombination(string j, string k, string i)
+// vector<vector<vector<double>>> recombination(vector<double> rec_rate)
+// {
+// 	vector<vector<vector<double>>> rec_table(ng, (vector<vector<double>>(ng, (vector<double>(ng, 0)))));
+
+// 	for (int i = 0; i<ng; i++){
+// 		std::bitset<n> i_bit(i);
+// 		string i_bin = i_bit.to_string<char, std::string::traits_type, std::string::allocator_type>();
+// 		for (int j = 0; j <ng;  j++){
+// 			std::bitset<n> j_bit(j);
+// 			string j_bin = j_bit.to_string<char, std::string::traits_type, std::string::allocator_type>();
+// 			for (int k = 0; k<ng; k++){
+// 				std::bitset<n> k_bit(k);
+// 				string k_bin = k_bit.to_string<char, std::string::traits_type, std::string::allocator_type>();
+// 				rec_table[i][j][k] = jk_i_recombination(i_bin, j_bin, k_bin, rec_rate);
+// 				cout << rec_table[i][j][k] << endl;
+// 			}
+// 		}
+// 	}
+// 	return rec_table;
+// }
+
+vector<double> new_distributions(vector<double> gamete_values, vector<vector<vector<double>>> dtf_rec,
+					   vector<double> gamete_distr, double mut_rate, vector<string> gam_bin, double opti_Gt, double strength)
 {
-	double R = 1.0;
-	int gam; //j = 0, k = 1
-
-	if (i[0] == j[0] || i[0] == k[0])
-	{
-
-		if ((i[0] == j[0] && i[0] == k[0]) || (i[0] == j[0] && i[0] != k[0]))
-			gam = 0;
-		else
-			gam = 1;
-
-		for (int z = 1; z < n; z++)
-		{
-			if (i[z] != j[z] && i[z] != k[z])
-			{
-				R = 0.0;
-				break;
-			}
-			if (i[z] == j[z] && i[z] == k[z])
-			{
-				double rdn = unif(rdgen);
-				if (rdn < r[z])
-				{
-					if (gam == 0)
-						gam = 1;
-					else
-						gam = 0;
-				}
-			}
-			else
-			{
-				if (gam == 0)
-				{ //j is the starting gamete
-					if (i[z] != j[z] && i[z] == k[z])
-					{
-						R *= r[z];
-						gam = 1;
-					}
-					if (i[z] == j[z] && i[z] != k[z])
-						R *= (1.0 - r[z]);
-				}
-				else
-				{ //k is the starting gamete
-					if (i[z] == j[z] && i[z] != k[z])
-					{
-						R *= r[z];
-						gam = 0;
-					}
-					if (i[z] == j[z] && i[z] != k[z])
-						R *= (1.0 - r[z]);
-				}
-			}
-		}
-	}
-	else
-		R = 0.0;
-	return R;
-}
-
-vector<double> new_distributions(vector<double> gamete_values,
-					   vector<double> gamete_distr, double mut_rate, vector<string> gam_bin)
-{
-
+	//cout << opti_Gt << endl
 	int ng = pow(2, n);
-	vector<double> p_star(ng);
+	vector<double> p_star(ng, 0);
 	double mean_fitness = 0;
-	double opti_Gt = 2; //!//
 	for (int j = 0; j < ng; j++)
 	{
 		for (int k = j; k < ng; k++)
@@ -280,39 +250,39 @@ vector<double> new_distributions(vector<double> gamete_values,
 			mean_fitness += exp(-s * gamete_values[j] + gamete_values[k] - pow(opti_Gt, 2)) * gamete_distr[j] * gamete_distr[k];
 		}
 	}
+	// cout << mean_fitness << endl;
 
-	double W = 0;
 	for (int i = 0; i < ng; i++)
 	{
 		for (int j = 0; j < ng; j++)
 		{
 			for (int k = j; k < ng; k++)
 			{
-				W += exp(-s * gamete_values[j] + gamete_values[k] - pow(opti_Gt, 2)) * gamete_distr[j] * gamete_distr[k] * dtf_rec[i][j][k] / mean_fitness; //!//
+				p_star[i] += exp(-strength * pow(gamete_values[j] + gamete_values[k] - opti_Gt, 2)) * gamete_distr[j] * gamete_distr[k] * dtf_rec[i][j][k] / mean_fitness;
 			}
 		}
 	}
 
 	double mutation_ij = 0;
-	double tot_mut = 0;
+	
 	for (int i = 0; i < ng; i++)
 	{
-
+		double tot_mut = 0;
 		for (int j = 0; j < ng; j++)
 		{
+			
 			int nm = 0;
 			if (i != j)
 			{
 				for (int z = 0; z < n; z++)
 				{
-					if (gam_bin[i][z] != gam_bin[j][z])
-						nm++;
+					if (gam_bin[i][z] != gam_bin[j][z]) nm++;
 				}
 				mutation_ij = pow(mut_rate, nm);
 				tot_mut += tot_mut + p_star[j] * mutation_ij - p_star[i] * mutation_ij;
 			}
 		}
-		gamete_distr[i] += tot_mut;
+		p_star[i] += tot_mut;
 	}
-	return gamete_distr;
+	return p_star;
 }
