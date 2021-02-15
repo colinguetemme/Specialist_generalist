@@ -1,14 +1,38 @@
-genetic_set <- function(number_of_genes){
-  mean_range <- runif(number_of_genes, -0.9, 0.9)
-  a <- rnorm(number_of_genes, 0, 0.2)
-  range <- data.frame(index = 1:number_of_genes, min_range = mean_range-(a/2),
-                      max_range = mean_range+(a/2), gen_value = runif(number_of_genes, 0, 1))
+# define one gene
+# suppose only uniform distribution
+# and completely random model
+one_gene <- function(){
+  low_lim <- runif(1)
+  hi_lim <- runif(1)
+  if (hi_lim < low_lim){
+    lim <- low_lim
+    low_lim <- hi_lim
+    hi_lim <- lim
+  }
+  value <- runif(1)
+  return(c(low_lim, hi_lim, value))
 }
 
-num_gen <- 10
-chou <- genetic_set(num_gen)
-plot(NULL, xlim = c(-1, 1), ylim = c(0, 1))
-for (i in 1:num_gen){
-  lines(c(chou$min_range[i], chou$max_range[i]), c(chou$gen_value[i], chou$gen_value[i]))
+
+
+
+# plotting this allele
+x <- seq(0, 1, 0.0001)
+plot(x, allele_value * (low_lim < x) * (x < hi_lim), ylim = c(0, 1))
+
+# Let's define multiple loci
+num_loci <- 10000
+first_row <- one_gene()
+mult_genes <- data.frame("low_lim" = first_row[1], "hi_lim" = first_row[2],
+                         "value" = first_row[3])
+for (n in 1:(num_loci-1)){
+  mult_genes <- rbind(mult_genes, one_gene())
 }
+
+a <- 0;
+for (fit in x){
+  a <- c(a, sum(mult_genes$value[(mult_genes$low_lim < fit) * (mult_genes$hi_lim > fit)]))
+}
+# Suppose a time changing env
+plot(a)
 

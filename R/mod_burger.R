@@ -46,6 +46,7 @@ genetic_sim <- function(num_loci, haploid = F){
   }
   gamete_distr <- runif(nb_gamete, 0, 1)
   gamete_distr <- gamete_distr / sum(gamete_distr)
+  print(gamete_distr)
   
   return(list(gamete_values, gamete_distr, gamete_scheme, rec_rate))
 }
@@ -157,16 +158,25 @@ new_distributions <- function(num_loci, gamete_distr, gamete_values,
   p_star <- rep(0, nb_gamete)
 
   mean_fitness <- 0
-  cool = NULL
   for (j in 1:nb_gamete){
     for (k in j:nb_gamete){
 
       mean_fitness <- mean_fitness + exp(-strength_selec *
                       (gamete_values[j] + gamete_values[k] - opti_Gt)^2) *
-                      gamete_distr[j] * gamete_distr[k]
-      cool <- c(cool, gamete_distr[j] * gamete_distr[k])
+                      (gamete_distr[j] * gamete_distr[k])
     }
   }
+  sum = 0
+  for (j in 1:nb_gamete){
+    for (k in j:nb_gamete){
+      
+      sum <- sum + (gamete_distr[j] * gamete_distr[k])
+    }
+  }
+  print("oui")
+  print(sum)
+  print("ouo")
+  print(sum(gamete_distr))
 
   for (i in 1:nb_gamete){
     for (j in 1:nb_gamete){
@@ -174,7 +184,7 @@ new_distributions <- function(num_loci, gamete_distr, gamete_values,
         
         G <- gamete_values[j] + gamete_values[k]
         viability_G <- (exp(-strength_selec * (G - opti_Gt)^2) * gamete_distr[j] *
-                          gamete_distr[k] * dtf_rec[i, paste(j,',',k)]) / mean_fitness
+                          gamete_distr[k] * dtf_rec[i, paste(j,',',k)]) #/ mean_fitness
         p_star[i] <- p_star[i] + viability_G
       } 
     }
@@ -185,12 +195,13 @@ new_distributions <- function(num_loci, gamete_distr, gamete_values,
     tot_mut <- 0
     
     for (j in (1:nb_gamete)[-i]){
-      mutation_ij <- mut_rate ^ (sum(gamete_scheme[[i]] != gamete_scheme[[j]]))
+      mutation_ij <- mut_rate ^ (sum(gamete_scheme[[i]] != gamete_scheme[[j]])) * (1-mut_rate) ^ (sum(gamete_scheme[[i]] == gamete_scheme[[j]])) 
       tot_mut <- tot_mut + p_star[j]*mutation_ij - p_star[i]*mutation_ij
     }
     
     gamete_distr[i] <- p_star[i] + tot_mut
   }
+  gamete_distr <- gamete_distr/sum(gamete_distr)
   return(list(gamete_distr, mean_fitness))
 }
 

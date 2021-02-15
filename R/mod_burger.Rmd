@@ -12,7 +12,75 @@ knitr::opts_chunk$set(echo = TRUE)
 
 The article on which is based this code can be find at [Burger(2002)](https://www.cambridge.org/core/services/aop-cambridge-core/content/view/6AB0F0FA0C6991AAC624A26549D110EC/S0016672302005682a.pdf/div-class-title-fluctuating-environments-and-the-role-of-mutation-in-maintaining-quantitative-genetic-variation-div.pdf).
 
-In summary, Burger
+In summary, This article draft a model to test in which way the effect of the frequency of variation in a varying environment can influence the diversity.
+
+The hypothesis is that if the frequency is too short, then we should expect a few generalist to dominate all the other species, at the opposite, very long variation frequency will allow few species to specialize to the alternate environments. The best in term in diversity would be somewhere between those two extremes where the generalist and specialist would have the same long term fitness.
+
+They described the optimum genotype in time $\theta_t$ as following a sinusoid function of period $L$, amplitude $A$ and with a stochasticity factor $d$ (can be 0).
+
+<p style="text-align:center;">
+<img src="pictures_for_rmd/Burger_fig1.png" alt=""
+	title="" width="400" height="300" />
+</p>
+
+Now to describe the population evolving in this environment they consider the corresponding trait as an additive trait, determined by $n$ diallelic loci, each of those loci $i$ can have an allele of value $0$ or an allele of value $\beta_i$ which is sample from an uniform distribution between $0$ and $1$, all those positive alleles are then scaled in a way that the heterozygote would have a value of $0.5$ leading to $\alpha_i = 0.5 \beta_i / \sum_i \beta_i$ the scaled values of the positive alleles.
+
+Also Because all the loci are diallelic, the size of the set of all gametes is $2^n$.
+
+the fitness of an individual can then be calculated as
+
+\[
+W_{G,\, t} = \exp(-s(G -\theta_t)^2).
+\]
+
+Where $G$ is the genotype (so the sum of a pair of gametes $j$ and $k$) of an individual, $s$ the strength of the selection and $\theta_t$ the optimum genotype at time $t$.
+
+Now we recombination, which they define using a vector of size $n-1$ of rate of recombination and from this vector the function $R_{jk}(i)$ which is the probability to obtain the gamete $i$ from gamete $j$ and $k$.
+
+Above is a figure representing how to consider the recombination in this model.
+
+<p style="text-align:center;">
+<img src="pictures_for_rmd/recombination.jpg" alt=""
+	title="" width="300" height="200" />
+</p>
+
+So in this particular case the probability considering the blue and orange gamete would be 
+
+\[
+R_{jk}(i) = r_1 r_3 (1 - r_2) * 0.5,
+\]
+
+It is good to note that we have to consider the probability to not having recombination at the appropriate position.
+
+Also this can be more complex as soon as some loci of $j$ and $k$ are homozygote, since from this point we can either have a recombination or no recombination but we have to consider the two possibilities in the output, for example
+
+<p style="text-align:center;">
+<img src="pictures_for_rmd/recombination2.jpg" alt=""
+	title="" width="300" height="200" />
+</p>
+	
+In this case we would have 
+\[
+R_{jk}(i) = [[(1 - r_1)(1 - r_2)(1 - r_3)] + [r_1r_3(1 - r_3)]  + [r_1r_2(1 - r_3)]]*0.5,
+\]
+with between each square brackets, a way to get $i$ from recombination of $j$ and $k$.
+
+Also this mean that if $i=j=k$ then $R_{jk}(i) = 1$ and if any loci of $i$ is not weared by either $j$ or $k$ then $R_{jk}(i) = 0$.
+
+Mutation occurs with a constant and common mutation rate $\mu$, which makes quite easy the calculation of the probability to go from $j$ to $k$ by mutations.
+
+We can solve the following example
+
+<p style="text-align:center;">
+<img src="pictures_for_rmd/mutation.jpg" alt=""
+	title="" width="300" height="200" />
+</p>
+
+with the formula 
+
+\[
+u_{ij} = \mu^2(1-\mu)^2.
+\]
 
 ## Description of the functions
 
@@ -21,12 +89,12 @@ In summary, Burger
 The first thing needed is the time fluctuating environment. Burger described the optimal genotype in the environment following a sinus function. To this sinus function will be add stochasticity (sampled in a normal distribution).
 
 So we need 4 parameters:
-the amplitude of the variation,
-the period between two cycles,
-the magnitude of the stochasticity parameter,
-the time to stop the simulation.
+the ```amplitude``` of the variation,
+the ```period``` between two cycles,
+the magnitude of the stochasticity parameter (``stoch_magnitude```),
+the time to stop the simulation (```t_max```). In the paper this parameter will be 300000 if $d=0$ with the simulation stopping when reaching the equilibrium and 50000 id $d>0$.
 
-A good set of values to start could be
+We start be initializing those parameters
 
 ```{r}
 rm(list = ls())
@@ -38,7 +106,7 @@ stoch_magnitude <- 0.1
 t_max <- 200
 ```
 
-we then describe the function that will generate 
+And then describe the function that will generate the optimum genotype fluctuating in time will be
 
 ```{r}
 get_optimum <- function(t_max, amplitude, period, stoch_magnitude){
@@ -95,7 +163,7 @@ genetic_sim <- function(num_loci, haploid = F){
   return(list(gamete_values, gamete_distr, gamete_scheme, rec_rate))
 }
 ```
-So we first start to generate the positive alleles values. Which are sampled from a uniform distribution (btw 0 and 1) and then scaled to sum up to 0.5.
+So we first start to generate the positive alleles values. Which are sampled from a uniform distribution (btw $0$ and $1$) and then scaled to sum up to $0.5$.
 
 ```{r}
 # input in the function #
@@ -112,8 +180,8 @@ From there we can describe every possible gametes. Because the loci are dialleli
 ```{r}
 nb_gamete <- 2^num_loci
 ```
-Then considering the positive allele corresponds to a 1 and the null allele to a 0, we describe every gamete as a binary value, in fact the binary values from 0 to the number of gametes will represent every allelic combinations.
-In that aim the function num_to_bin(i, n) will return a vector of size n of the binary of the decimal number i.
+Then considering the positive allele corresponds to a $1$ and the null allele to a $0$, we describe every gamete as a binary value, in fact the binary values from $0$ to the number of gametes will represent every allelic combinations.
+In that aim the function ```num_to_bin(i, n)``` will return a vector of size n of the binary of the decimal number $i$.
 ```{r, include = FALSE}
 num_to_bin <- function(number, n) {
   bin_vector <- rev(as.numeric(intToBits(number)))
@@ -127,7 +195,8 @@ num_to_bin <- function(number, n) {
 ```{r}
 num_to_bin(6, 5)
 ```
-So we have
+
+In the case of every alleles combinations we use
 
 ```{r}
 
@@ -144,27 +213,26 @@ for (i in 1:(nb_gamete)){
 
 ```
 
-We then can generate the initial probabilities of gametes
+We then can generate the initial probabilities of gametes which are randomly sampled in a uniform and then scaled to sum up to 1.
 
 ```{r}
 gamete_distr <- runif(nb_gamete, 0, 1)
 gamete_distr <- gamete_distr / sum(gamete_distr)
-print(gamete_distr)
 ```
+
 Finally we can generate the recombination rate between two adjacent loci for every pair of adjacent loci as
 
 ```{r}
 rec_rate <- runif(num_loci-1, 0, 0.5)
-print(rec_rate)
-
 # return(list(gamete_values, gamete_distr, gamete_scheme, rec_rate))
 ```
+
 
 ### The recombination function
 
 The recombination function is something we really want to calculate once for all before the simulation since its a quite heavy function. We need first a function that will actually perform recombination for two given gametes.
 
-If we want to transform two gametes considering a list of recombination position we can use a recursive function (or for() loop) to go through all re combination.
+If we want to transform two gametes considering a list of recombination position we can use a recursive function (or ```for()``` loop) to go through all recombination.
 
 ```{r}
 permut_gamete <- function(j_bin, k_bin, rec_vec){
@@ -188,9 +256,10 @@ permut_gamete <- function(j_bin, k_bin, rec_vec){
 permut_gamete(c(1, 0, 0, 1), c(0, 0, 1, 1), c(1, 3))
 ```
 
-Then we can build the function that will calculate the probability to get the gamete i considering the allele j and k.
+Then we can build the function that will calculate the probability to get the gamete $i$ considering the allele $j$ and $k$.
 
-This function will build all the combination of recombination and give them to the permut_gamete() function. This is what l stand for. The next if else condition will check if their is a recombination. Finally the last two if will check if the new gametes are equal to i.
+This function will build all the combination of recombination and give them to the ```permut_gamete()``` function. This is what $l$ stand for. The next if else condition will check if their is a recombination. Finally the last two if will check if the new gametes are equal to $i$.
+
 ```{r}
 jk_i_recombination <- function(i_bin, j_bin, k_bin, rec_rate){
   R_jk_to_i <- 0
@@ -223,7 +292,7 @@ jk_i_recombination <- function(i_bin, j_bin, k_bin, rec_rate){
 }
 ```
 
-And the last function we will need is a function that does this for every combination of j, k and i. So it will basically creates a big dataframe and add the probability to have the gamete i considering a pair j and k of gametes, which corresponds to the 3 for() loops.
+And the last function we will need is a function that does this for every combination of j, k and i. It will creates a big dataframe and add the probability to have the gamete i considering a pair j and k of gametes, which corresponds to the 3 ```for()``` loops.
 
 ```{r}
 recombination <- function(num_loci, rec_rate){
@@ -265,10 +334,9 @@ num_loci <- 3
 recombination(num_loci, rec_rate)
 ```
 
-
 ### doing the simulation
 
-So it is a function in 3 steps, first we calculate the mean fitness of your actual population, then you calculate the p_star which corresponds to the eqn xx in the paper of burger 2002, it will consider the survival rate and the recombination probabilities. Then we add the mutation, and with that the probabilities to go from one gamete to another. Which corresponds to the mutation rate power the number of differences between the two gametes.
+So it is a function in 3 steps, first we calculate the mean fitness of your actual population, then you calculate the p_star which corresponds to the eqn 4 in the paper of burger 2002, it will consider the survival rate and the recombination probabilities. Then we add the mutation, and with that the probabilities to go from one gamete to another. Which corresponds to the mutation rate power the number of differences between the two gametes.
 
 ```{r, include = FALSE}
 new_distributions <- function(num_loci, gamete_distr, gamete_values,
@@ -316,6 +384,8 @@ new_distributions <- function(num_loci, gamete_distr, gamete_values,
   return(list(gamete_distr, mean_fitness))
 }
 ```
+
+
 
 ```{r}
 
@@ -381,3 +451,6 @@ plot(simulation[[3]], type = 'l', ylim = c(0,1))
 lines(simulation[[2]], col = 'blue')
 
 ```
+
+### Getting the results
+
