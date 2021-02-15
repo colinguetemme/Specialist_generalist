@@ -1,6 +1,14 @@
 ---
 title: "Diversity level in time varying environment"
-output: html_document
+subtitle: "The model of Burger(2002)"
+author: "Colin Guétemme"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+    toc: true
+toc-title: "Table of Contents"
 ---
 
 
@@ -8,9 +16,10 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## the article from Burger (2002)
 
-The article on which is based this code can be find at [Burger(2002)](https://www.cambridge.org/core/services/aop-cambridge-core/content/view/6AB0F0FA0C6991AAC624A26549D110EC/S0016672302005682a.pdf/div-class-title-fluctuating-environments-and-the-role-of-mutation-in-maintaining-quantitative-genetic-variation-div.pdf).
+# The article from Burger (2002)
+
+> The article on which is based this code can be find at [Burger(2002)](https://www.cambridge.org/core/services/aop-cambridge-core/content/view/6AB0F0FA0C6991AAC624A26549D110EC/S0016672302005682a.pdf/div-class-title-fluctuating-environments-and-the-role-of-mutation-in-maintaining-quantitative-genetic-variation-div.pdf).
 
 In summary, This article draft a model to test in which way the effect of the frequency of variation in a varying environment can influence the diversity.
 
@@ -82,9 +91,9 @@ with the formula
 u_{ij} = \mu^2(1-\mu)^2.
 \]
 
-## Description of the functions
+# The model
 
-### The time variation function
+## The time variation function
 
 The first thing needed is the time fluctuating environment. Burger described the optimal genotype in the environment following a sinus function. To this sinus function will be add stochasticity (sampled in a normal distribution).
 
@@ -97,9 +106,6 @@ the time to stop the simulation (```t_max```). In the paper this parameter will 
 We start be initializing those parameters
 
 ```{r}
-rm(list = ls())
-
-
 amplitude <- 0.5
 period <- 50
 stoch_magnitude <- 0.1
@@ -120,14 +126,14 @@ get_optimum <- function(t_max, amplitude, period, stoch_magnitude){
 
 leading in our case to a plot like this
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, out.width="70%", fig.align="center"}
 opti_G <- get_optimum(t_max, amplitude, period, stoch_magnitude)
 plot(opti_G, type = 'l')
 ```
 
 When doing a big number of simulations, like 4000 in the article of Burger, we will calculate the next value at each time step rather than the complete timeline, because we can stop the simulation when we reach an equilibrium saving a lot of calculation in many cases.
 
-### Generate the genetics values
+## Generate the genetics values
 
 We will also need a function that will generate the value of each positive allele, as well as the recombination probabilities. But mostly, what is relevant is to get the description of every possible gametes and their phenotypic values.
 
@@ -167,8 +173,9 @@ So we first start to generate the positive alleles values. Which are sampled fro
 
 ```{r}
 # input in the function #
-num_loci <- 4
+num_loci <- 4 # {
 #########################
+#beginning of the function
 
 loci <- runif(num_loci, 0, 1)
 loci <- 0.5 * loci / sum(loci)
@@ -225,10 +232,11 @@ Finally we can generate the recombination rate between two adjacent loci for eve
 ```{r}
 rec_rate <- runif(num_loci-1, 0, 0.5)
 # return(list(gamete_values, gamete_distr, gamete_scheme, rec_rate))
+# } End of the function
 ```
 
 
-### The recombination function
+## The recombination function
 
 The recombination function is something we really want to calculate once for all before the simulation since its a quite heavy function. We need first a function that will actually perform recombination for two given gametes.
 
@@ -252,15 +260,24 @@ permut_gamete <- function(j_bin, k_bin, rec_vec){
   }
 }
 ```
+
+Here is an example of the function ```permut_gamete()```
+
 ```{r}
 permut_gamete(c(1, 0, 0, 1), c(0, 0, 1, 1), c(1, 3))
 ```
 
-Then we can build the function that will calculate the probability to get the gamete $i$ considering the allele $j$ and $k$.
+
+Then we can build the function ```jk_i_recombination(i_bin, j_bin, k_bin, rec_rate)``` that will calculate the probability to get the gamete $i$ considering the gametes $j$ and $k$.
 
 This function will build all the combination of recombination and give them to the ```permut_gamete()``` function. This is what $l$ stand for. The next if else condition will check if their is a recombination. Finally the last two if will check if the new gametes are equal to $i$.
 
 ```{r}
+jk_i_recombination <- function(i_bin, j_bin, k_bin, rec_rate){
+  # ...
+}
+```
+```{r, include = FALSE}
 jk_i_recombination <- function(i_bin, j_bin, k_bin, rec_rate){
   R_jk_to_i <- 0
   n <- length(rec_rate)
@@ -292,9 +309,47 @@ jk_i_recombination <- function(i_bin, j_bin, k_bin, rec_rate){
 }
 ```
 
-And the last function we will need is a function that does this for every combination of j, k and i. It will creates a big dataframe and add the probability to have the gamete i considering a pair j and k of gametes, which corresponds to the 3 ```for()``` loops.
-
+This chunk will produce a table with every possible combination of recombination, with a $0$ corresponding to no recombination.
 ```{r}
+  R_jk_to_i <- 0
+
+  n <- length(rec_rate)
+  l <- rep(list(0:1), n)
+  l <- expand.grid(l)
+  l <- t((1:(num_loci-1))*t(l))
+  l
+```
+Then, we pass each of this combination in ```permut_gamete()``` 
+
+```{r, eval=F}
+for (t in 1:nrow(l)){
+    
+    rec_vec = l[t, ]
+
+    if (sum(rec_vec)>0){
+      rec_vec <- unlist(lapply(rec_vec, function(x) {x[x!=0]}))
+      jk <- permut_gamete(j_bin, k_bin, rec_vec)
+
+    } else {
+      jk <- list(j_bin, k_bin)
+      rec_vec <- -(1:(num_loci-1))
+    }
+}
+```
+Each of those permutation is then compare with $i$ using
+```{r, eval = FALSE}
+    if (all(jk[[1]] == i_bin)){ # compare i with the first permutation
+      R_jk_to_i <- R_jk_to_i + 0.5 * prod(rec_rate[rec_vec]) * prod(1-rec_rate[-rec_vec]) # Add the probability that this particular permutation happened based on rec_vec
+    }
+    if (all(jk[[2]] == i_bin)){ # compare i with the second permutation
+      R_jk_to_i <- R_jk_to_i + 0.5 * prod(rec_rate[rec_vec]) * prod(1-rec_rate[-rec_vec])
+    }
+
+```
+
+And finally function ```recombination(num_loci, rec_rate)``` is a function that does this for every combination of j, k and i. It will creates a big dataframe and add the probability to have the gamete i considering a pair j and k of gametes, which corresponds to the 3 ```for()``` loops.
+
+```{r, include = FALSE}
 recombination <- function(num_loci, rec_rate){
   
   prob_rec <- matrix(0, ncol = 2^num_loci, nrow = 2^(num_loci*2))
@@ -331,10 +386,12 @@ recombination <- function(num_loci, rec_rate){
 ```{r}
 rec_rate <- runif(2, 0, 0.5)
 num_loci <- 3
-recombination(num_loci, rec_rate)
+rec_table <- recombination(num_loci, rec_rate)
+
+print(rec_table[1, 5])
 ```
 
-### doing the simulation
+## Doing the simulation
 
 So it is a function in 3 steps, first we calculate the mean fitness of your actual population, then you calculate the p_star which corresponds to the eqn 4 in the paper of burger 2002, it will consider the survival rate and the recombination probabilities. Then we add the mutation, and with that the probabilities to go from one gamete to another. Which corresponds to the mutation rate power the number of differences between the two gametes.
 
@@ -387,7 +444,7 @@ new_distributions <- function(num_loci, gamete_distr, gamete_values,
 
 
 
-```{r}
+```{r, out.width="70%", fig.align="center"}
 
 amplitude <- 0.2
 period <- 30
@@ -434,8 +491,34 @@ simulation <- one_simul(amplitude = amplitude, period = period,
           mut_rate = mut_rate, num_loci =  num_loci, t_max =  t_max)
 
 
+# Test with every combn rather than gametics
+value = rep(0, t_max)
+for (t in 1:t_max){
+  for (j in 1:(2^num_loci)){
+    for (k in j:(2^num_loci)){
+     value[t] = value[t] + (gamete_values[j]+gamete_values[k]) * simulation[[1]][t, j] * simulation[[1]][t, k] / sum(simulation[[1]][t, ])
+    }
+  }
+}
 plot(simulation[[3]], type = 'l')
 lines(rowSums(t(t(simulation[[1]])*simulation[[4]]*2)), col = 'red')
+lines(value, col = 'blue')
+
+mean_g <- rep(0, t_max)
+var_g <- rep(0, t_max)
+for (t in 1:t_max){
+  for (j in 1:(2^num_loci)){
+    mean_g[t] <- mean_g[t] + gamete_values[j] * simulation[[1]][t, j] 
+  }
+}
+for (t in 1:t_max){
+  for (j in 1:(2^num_loci)){
+    var_g[t] <- (mean_g[t] - (gamete_values[j] * simulation[[1]][t, j]))^2
+  }
+}
+
+plot(simulation[[3]], type = 'l', ylim = c(0, 1))
+lines(var_g*10, col = 'red')
 
 plot(simulation[[3]], ylim = c(0, 1), type = 'l')
 lines(simulation[[1]][,1 ], col = 'blue')
@@ -452,5 +535,70 @@ lines(simulation[[2]], col = 'blue')
 
 ```
 
-### Getting the results
+# Statistics and Results
 
+In the article of Burger the results are based on:
+
+* The arithmetic average of the mean genotypic values
+```{r, eval = FALSE}
+geom_mean_fitness = mean(mean_fitness)
+``` 
+
+* The arithmetic average of the genetic variances
+```{r, eval = FALSE}
+mean_gamete = mean(gamete_values * gamete_distr)
+var_gen = sum((gamete_values*gamete_distr - mean_gamete)^2)
+mean_var_gen = mean(var_gen)
+``` 
+
+* The arithmetic average  of the ratios of the genetic variance and the
+maximum possible variance in the given genetic system
+under linkage equilibrium (V max )
+```{r, eval = FALSE}
+Vmax = 0.5 * sum(loci^2)
+geom_mean_fitness = mean(var_gen/Vmax)
+``` 
+
+
+* And the geometric average W F g of population mean fitness.
+```{r, eval = FALSE}
+geom_mean_fitness = pow(prod(mean_fitness), 1/length(mean_fitness))
+``` 
+
+.
+.
+
+Also those values are only kept **at equilibrium**, which is described as:
+
+* In the model without stochasticity ($d=0$), the time when distance between the distributions seperated by one cycle is under $10^{-12}$, with a maximum of 300 000 generations. 
+
+* In the model with stochasticity ($d>0$) the model runs for 50 000 generations and the values of interests are averaged over the last 10 cycles.
+ 
+```{r, eval = FALSE}
+if (d == 0){
+  t_max = 300000
+  if ((t%%L == 0) & (L>0)){
+    distance = sqrt(sum((distr_over_time[t] - distr_over_time[t-L])^2))
+    if (distance < 10^(-12)){
+      return(...)
+    }
+  }
+}
+
+if (d > 0){
+  t_max = 50000
+  return(mean(...))
+}
+
+```
+ 
+Those values of interest are the **mean fitness** that we are already calculating at every timestep, and the **genetics variance**. Which can be calculated using
+
+```{r, eval = FALSE}
+mean_gamete = mean(gamete_values * gamete_distr)
+var_gen = sum((gamete_values*gamete_distr - mean_gamete)^2)
+```
+
+
+ 
+ 

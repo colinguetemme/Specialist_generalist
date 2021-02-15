@@ -23,6 +23,7 @@ int main(){
 	for (int i = 0; i<data.all_mean_fitness.size(); i++){
 		cout << i << " : " << data.all_mean_fitness[i] << endl;
 		cout << i << " : " << data.all_distr[i][1] << endl;
+		cout << i << " : " << data.all_var_genetics[i] << endl;
 	} 
 
 	// creates the output files with the results
@@ -46,10 +47,12 @@ many_steps one_simul(double A, int L, double d, double s, double u, int n, vecto
 
 	vector<vector<double>> all_distr(L, vector<double>(ng, 0));
 	vector<double> mean_fit(L, 0);
+	vector<double> var_gen(L, 0);
 
 	// initialize the distribution
 	data.all_distr = all_distr;
 	data.all_mean_fitness = mean_fit;
+	data.all_var_genetics = var_gen;
 	vector<double> old_distr = init_values.gamete_distr;
 
 	// If there is no stochasticity (meaning d==0)
@@ -78,9 +81,18 @@ many_steps one_simul(double A, int L, double d, double s, double u, int n, vecto
 				}
 			}
 
+			double mean_g = 0;
+			double var_g = 0;
+			for (int i = 0; i<ng; i++){
+				mean_g += init_values.gamete_values[i]*results.new_distr[i];
+			}
+			for (int i = 0; i<ng; i++){
+				var_g += pow((init_values.gamete_values[i]*results.new_distr[i])-mean_g, 2);
+			}
 
 			data.all_distr[t%L] = results.new_distr;
 			data.all_mean_fitness[t%L] = results.mean_fitness;
+			data.all_var_genetics[t%L] = var_g;
 
 			double sum = 0;
 			for (int i = 0; i<ng; i++){
@@ -102,6 +114,17 @@ many_steps one_simul(double A, int L, double d, double s, double u, int n, vecto
 			results = new_distributions(init_values.gamete_values, init_values.rec_table, data.all_distr[t], 0.00002, init_values.gamete_scheme, opti_G[t], s);
 			data.all_distr[t+1] = results.new_distr;
 			data.all_mean_fitness[t] = results.mean_fitness;
+
+			double mean_g = 0;
+			double var_g = 0;
+			for (int i = 0; i<ng; i++){
+				mean_g += init_values.gamete_values[i]*results.new_distr[i];
+			}
+			for (int i = 0; i<ng; i++){
+				var_g += pow((init_values.gamete_values[i]*results.new_distr[i])-mean_g, 2);
+			}
+			cout << var_g << endl;
+			data.all_var_genetics[t] = var_g;
 			// // outfile << t << "\t";
 			// // outfile << opti_G[t] << "\t";
 			// // for (int z = 0; z<ng; z++){
