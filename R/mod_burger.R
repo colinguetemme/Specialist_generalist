@@ -6,6 +6,7 @@
 # Number is a positive integer that will be transform in binary
 # n is the number of bit in the vector
 
+
 # > num_to_bin(23, 4)
 # [1] 0 1 1 1
 
