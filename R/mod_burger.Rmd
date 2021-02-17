@@ -4,11 +4,12 @@ subtitle: "The model of Burger(2002)"
 author: "Colin Guétemme"
 date: "`r Sys.Date()`"
 output:
-  prettydoc::html_pretty:
-    theme: cayman
-    highlight: github
-    toc: true
-toc-title: "Table of Contents"
+  html_document:
+  #prettydoc::html_pretty:
+    theme: "default" #caiman
+    highlight: "default"
+    toc: false
+    code_folding: show
 ---
 
 
@@ -16,8 +17,8 @@ toc-title: "Table of Contents"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-
-# The article from Burger (2002)
+# {.tabset}
+## The article from Burger (2002)
 
 > The article on which is based this code can be find at [Burger(2002)](https://www.cambridge.org/core/services/aop-cambridge-core/content/view/6AB0F0FA0C6991AAC624A26549D110EC/S0016672302005682a.pdf/div-class-title-fluctuating-environments-and-the-role-of-mutation-in-maintaining-quantitative-genetic-variation-div.pdf).
 
@@ -91,9 +92,9 @@ with the formula
 u_{ij} = \mu^2(1-\mu)^2.
 \]
 
-# The model
+## The model
 
-## The time variation function
+### The time variation function
 
 The first thing needed is the time fluctuating environment. Burger described the optimal genotype in the environment following a sinus function. To this sinus function will be add stochasticity (sampled in a normal distribution).
 
@@ -133,7 +134,7 @@ plot(opti_G, type = 'l')
 
 When doing a big number of simulations, like 4000 in the article of Burger, we will calculate the next value at each time step rather than the complete timeline, because we can stop the simulation when we reach an equilibrium saving a lot of calculation in many cases.
 
-## Generate the genetics values
+### Generate the genetics values
 
 We will also need a function that will generate the value of each positive allele, as well as the recombination probabilities. But mostly, what is relevant is to get the description of every possible gametes and their phenotypic values.
 
@@ -236,7 +237,7 @@ rec_rate <- runif(num_loci-1, 0, 0.5)
 ```
 
 
-## The recombination function
+### The recombination function
 
 The recombination function is something we really want to calculate once for all before the simulation since its a quite heavy function. We need first a function that will actually perform recombination for two given gametes.
 
@@ -391,7 +392,7 @@ rec_table <- recombination(num_loci, rec_rate)
 print(rec_table[1, 5])
 ```
 
-## Doing the simulation
+### Doing the simulation
 
 So it is a function in 3 steps, first we calculate the mean fitness of your actual population, then you calculate the p_star which corresponds to the eqn 4 in the paper of burger 2002, it will consider the survival rate and the recombination probabilities. Then we add the mutation, and with that the probabilities to go from one gamete to another. Which corresponds to the mutation rate power the number of differences between the two gametes.
 
@@ -420,7 +421,7 @@ new_distributions <- function(num_loci, gamete_distr, gamete_values,
       for (k in j:nb_gamete){
         
         G <- gamete_values[j] + gamete_values[k]
-        viability_G <- (exp(-strength_selec * (G - opti_Gt)^2) * gamete_distr[j] * gamete_distr[k] * dtf_rec[i, paste(j,',',k)]) / mean_fitness
+        viability_G <- (exp(-strength_selec * (G - opti_Gt)^2) * gamete_distr[j] * gamete_distr[k] * dtf_rec[i, paste(j,',',k)]) / mean_fitness # change to better data.table
         p_star[i] <- p_star[i] + viability_G
       } 
     }
@@ -535,70 +536,240 @@ lines(simulation[[2]], col = 'blue')
 
 ```
 
-# Statistics and Results
+## Statistics
 
-In the article of Burger the results are based on:
+> In the article of Burger the results are based on:
 
 * The arithmetic average of the mean genotypic values
 ```{r, eval = FALSE}
-geom_mean_fitness = mean(mean_fitness)
+mean_gen <- mean(simul[[1]] * simul[[4]])
 ``` 
 
 * The arithmetic average of the genetic variances
 ```{r, eval = FALSE}
-mean_gamete = mean(gamete_values * gamete_distr)
-var_gen = sum((gamete_values*gamete_distr - mean_gamete)^2)
-mean_var_gen = mean(var_gen)
+mean_gamete <- mean(gamete_values * gamete_distr)
+var_gen <- sum((gamete_values*gamete_distr - mean_gamete)^2)
+mean_var_gen <- mean(var_gen)
 ``` 
 
 * The arithmetic average  of the ratios of the genetic variance and the
 maximum possible variance in the given genetic system
 under linkage equilibrium (V max )
 ```{r, eval = FALSE}
-Vmax = 0.5 * sum(loci^2)
-geom_mean_fitness = mean(var_gen/Vmax)
+Vmax <- 0.5 * sum(loci^2)
+mean_ratio <- mean(var_gen/Vmax)
 ``` 
 
 
 * And the geometric average W F g of population mean fitness.
 ```{r, eval = FALSE}
-geom_mean_fitness = pow(prod(mean_fitness), 1/length(mean_fitness))
+geom_mean_fitness <- pow(prod(mean_fitness), 1/length(mean_fitness))
 ``` 
 
-.
-.
+All this statistics will be put in the following function
+```{r, echo = FALSE}
+stat_values <- function(gamete_distr, gamete_values, mean_fitness){
+  # The code from the last 4 chunks
+  return(mean_gen, mean_var_gen, mean_ratio, geom_mean_fitness)
+}
+```
 
-Also those values are only kept **at equilibrium**, which is described as:
+See the full code by showing the hidden chunk
+```{r, class.source = 'fold-hide'}
+stat_values <- function(gamete_distr, gamete_values, mean_fitness){
+  
+  mean_gamete <- mean(gamete_values * gamete_distr) ##!##
+  
+  var_gen <- sum((gamete_values*gamete_distr - mean_gamete)^2)
+  mean_var_gen <- mean(var_gen)
+  
+  loci <- log(length(gamete_values))/log(2) # To know the num of loci
+  Vmax <- 0.5 * sum(loci^2)
+  mean_ratio <- mean(var_gen/Vmax)
+  
+  geom_mean_fitness <- pow(prod(mean_fitness), 1/length(mean_fitness))
+  
+  return(mean_gen, mean_var_gen, mean_ratio, geom_mean_fitness)
+}
+```
+&nbsp;
 
-* In the model without stochasticity ($d=0$), the time when distance between the distributions seperated by one cycle is under $10^{-12}$, with a maximum of 300 000 generations. 
+&nbsp;
 
-* In the model with stochasticity ($d>0$) the model runs for 50 000 generations and the values of interests are averaged over the last 10 cycles.
+&nbsp;
+
+> Also those values are only kept **at equilibrium**, which is described as:
+
+* In the model **without stochasticity ($d=0$)**, the time when distance between the distributions separated by one cycle is under **$10^{-12}$**, with a maximum of **300 000** generations. 
+
+* In the model with **stochasticity ($d>0$)** the model runs for **50 000** generations and the values of interests are averaged over the **last 10 cycles**.
  
+The following code should be inserted in the ```one_simul()``` function instead of using the `t_max` value. 
 ```{r, eval = FALSE}
-if (d == 0){
-  t_max = 300000
-  if ((t%%L == 0) & (L>0)){
-    distance = sqrt(sum((distr_over_time[t] - distr_over_time[t-L])^2))
-    if (distance < 10^(-12)){
-      return(...)
+# one_simul <- function(amplitude, period, stoch_magnitude, strength_selec,
+#                      mut_rate, num_loci){
+
+# ...
+  if (stoch_magnitude == 0){
+    t_max = 300000
+    if ((t%%L == 0) & (L>0)){
+      distance = sqrt(sum((distr_over_time[t] - distr_over_time[t-L])^2))
+      if (distance < 10^(-12)){
+        return(...)
+      }
     }
   }
-}
 
-if (d > 0){
-  t_max = 50000
-  return(mean(...))
-}
-
+  if (stoch_magnitude > 0){
+    t_max = 50000
+    return()
+  }
+# }
 ```
- 
-Those values of interest are the **mean fitness** that we are already calculating at every timestep, and the **genetics variance**. Which can be calculated using
+
+And the function to get the environmental fluctuations (`get_optimum`)should also be modified to remove the `t_max` variable.
+
+Also only the values at equilibrium should be kept, so in the case of non-stochastic environment, we should only keep the values of the last cycle, and in the case of stochastic environment the last 10 cycles.
 
 ```{r, eval = FALSE}
-mean_gamete = mean(gamete_values * gamete_distr)
-var_gen = sum((gamete_values*gamete_distr - mean_gamete)^2)
+# one_simul <- function(amplitude, period, stoch_magnitude, strength_selec,
+#                      mut_rate, num_loci){
+
+# ...
+  if (stoch_magnitude == 0){
+    # we shrink the matrix from 300000 to L (in our case 24)
+   distr_over_time <- matrix(0, ncol = length(gamete_distr), nrow = L)
+   distr_over_time[1, ] <- gamete_distr
+   mean_fitness_over_time <- rep(0, L)
+   for (t in 1:t_max){
+      opti_Gt <- opti_G[t]
+      new_results <- new_distributions(num_loci, distr_over_time[t, ], gamete_values,
+                                         gamete_scheme, opti_Gt, dtf_rec, mut_rate)
+      
+      # We store the result in a different variable for the calcul of the distance
+      current_distr <- new_results[[1]]
+      #
+      # Check the distance
+      #
+      # Put modulo L instead
+      distr_over_time[t%%L, ] <- current_distr
+      mean_fitness_over_time[t%%L] <- new_results[[2]]
+   }
+  }
+
+  if (stoch_magnitude > 0){
+    t_max = 50000
+    return()
+  }
+# }
 ```
 
 
- 
- 
+See the new function by clicking on the `code` button
+
+```{r class.source = 'fold-hide', eval = FALSE}
+one_simul <- function(amplitude,
+                      period,
+                      stoch_magnitude,
+                      strength_selec,
+                      mut_rate,
+                      num_loci, t_max){
+  
+  initialisation <- genetic_sim(num_loci = num_loci)
+  gamete_values <- initialisation[[1]]
+  gamete_distr <- initialisation[[2]]
+  gamete_scheme <- initialisation [[3]]
+  rec_rate <- initialisation[[4]]
+  
+  dtf_rec <- recombination(num_loci = num_loci, rec_rate = rec_rate)
+
+  opti_G <- get_optimum(t_max = t_max, amplitude = amplitude, period = period, 
+                        stoch_magnitude = stoch_magnitude)
+  
+  
+  if (stoch_magnitude == 0){
+    t_max = 300000
+    distr_over_time <- matrix(0, ncol = length(gamete_distr), nrow = t_max+1)
+    distr_over_time[1, ] <- gamete_distr
+    mean_fitness_over_time <- rep(0, t_max)
+    for (t in 1:t_max){
+      opti_Gt <- opti_G[t]
+      new_results <- new_distributions(num_loci, distr_over_time[t, ], gamete_values,
+                                         gamete_scheme, opti_Gt, dtf_rec, mut_rate)
+      distr_over_time[t+1, ] <- new_results[[1]]
+      mean_fitness_over_time[t] <- new_results[[2]]
+      if ((t%%L == 0) & (L>0)){
+        distance = sqrt(sum((distr_over_time[t] - distr_over_time[t-L])^2))
+        if (distance < 10^(-12)){
+          return(list(
+            distr_over_time[-1,],
+            mean_fitness_over_time,
+            opti_G,
+            gamete_values)
+            )
+        }
+      }
+    }
+    
+  }
+
+  if (stoch_magnitude > 0){
+      t_max = 50000
+      distr_over_time <- matrix(0, ncol = length(gamete_distr), nrow = t_max+1)
+      distr_over_time[1, ] <- gamete_distr
+      mean_fitness_over_time <- rep(0, t_max)
+      for (t in 1:t_max){
+        opti_Gt <- opti_G[t]
+        new_results <- new_distributions(num_loci, distr_over_time[t, ], gamete_values,
+                                             gamete_scheme, opti_Gt, dtf_rec, mut_rate)
+        distr_over_time[t+1, ] <- new_results[[1]]
+        mean_fitness_over_time[t] <- new_results[[2]]
+     }
+  }
+  
+  return(list(
+    distr_over_time[-1,],
+    mean_fitness_over_time,
+    opti_G,
+    gamete_values
+    ))
+}
+
+one_simul(amplitude, period, stoch_magnitude, strength_selec, mut_rate, num_loci, t_max)
+```
+
+&nbsp;
+
+&nbsp;
+
+We can now create a big data.table to keep track of every value
+
+```{r}
+# return(list(distr_over_time[-1,], mean_fitness_over_time, opti_G, gamete_values))
+
+data <-data.frame(
+  "run" = 1:4000,
+  "mean_gen" = rep(0, 4000),
+  "gen_var" = rep(0, 4000),
+  "V/vmax" = rep(0, 4000),
+  "mean_fit" = rep(0, 4000)
+)
+```
+
+> Then for each simulation we can calculate the values of interest and store them in `data`. 
+
+```{r, eval=FALSE}
+for(i in 1:4000){
+  simul <- one_simul(amplitude, period, stoch_magnitude, strength_selec, mut_rate, num_loci, t_max)
+  gamete_distr <- simul[[1]]
+  gamete_values <- simul[[2]]
+  mean_fitness <- simul[[3]]
+  data[i, ] <- stat_values(gamete_distr, gamete_values, mean_fitness)
+}
+colMeans(data)
+```
+
+But from this point we clearly require optimisation or going to another language, that is why this code has been translated to C++
+
+## Results from the C++ code
+
