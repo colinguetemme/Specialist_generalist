@@ -638,12 +638,13 @@ Also only the values at equilibrium should be kept, so in the case of non-stocha
 # ...
   if (stoch_magnitude == 0){
     # we shrink the matrix from 300000 to L (in our case 24)
+    t_max = 300000
    distr_over_time <- matrix(0, ncol = length(gamete_distr), nrow = L)
-   distr_over_time[1, ] <- gamete_distr
+   current_distr <- gamete_distr
    mean_fitness_over_time <- rep(0, L)
    for (t in 1:t_max){
       opti_Gt <- opti_G[t]
-      new_results <- new_distributions(num_loci, distr_over_time[t, ], gamete_values,
+      new_results <- new_distributions(num_loci, current_distr, gamete_values,
                                          gamete_scheme, opti_Gt, dtf_rec, mut_rate)
       
       # We store the result in a different variable for the calcul of the distance
@@ -657,13 +658,8 @@ Also only the values at equilibrium should be kept, so in the case of non-stocha
    }
   }
 
-  if (stoch_magnitude > 0){
-    t_max = 50000
-    return()
-  }
-# }
+# WE CAN APPLY THE SAME FOR STOCHATIC BUT WITH (L*10) INSTEAD OF L
 ```
-
 
 See the new function by clicking on the `code` button
 
@@ -674,7 +670,7 @@ one_simul <- function(amplitude,
                       strength_selec,
                       mut_rate,
                       num_loci, t_max){
-  
+
   initialisation <- genetic_sim(num_loci = num_loci)
   gamete_values <- initialisation[[1]]
   gamete_distr <- initialisation[[2]]
@@ -683,59 +679,72 @@ one_simul <- function(amplitude,
   
   dtf_rec <- recombination(num_loci = num_loci, rec_rate = rec_rate)
 
-  opti_G <- get_optimum(t_max = t_max, amplitude = amplitude, period = period, 
-                        stoch_magnitude = stoch_magnitude)
+  
   
   
   if (stoch_magnitude == 0){
-    t_max = 300000
-    distr_over_time <- matrix(0, ncol = length(gamete_distr), nrow = t_max+1)
-    distr_over_time[1, ] <- gamete_distr
-    mean_fitness_over_time <- rep(0, t_max)
+    t_max <- 300000
+    opti_G <- get_optimum(t_max = t_max, amplitude = amplitude, period = period, 
+                        stoch_magnitude = stoch_magnitude)
+    distr_over_time <- matrix(0, ncol = length(gamete_distr), nrow = period)
+    current_distr <- gamete_distr
+    mean_fitness_over_time <- rep(0, period)
+    
     for (t in 1:t_max){
       opti_Gt <- opti_G[t]
-      new_results <- new_distributions(num_loci, distr_over_time[t, ], gamete_values,
+      new_results <- new_distributions(num_loci, current_distr, gamete_values,
                                          gamete_scheme, opti_Gt, dtf_rec, mut_rate)
-      distr_over_time[t+1, ] <- new_results[[1]]
+
       mean_fitness_over_time[t] <- new_results[[2]]
-      if ((t%%L == 0) & (L>0)){
-        distance = sqrt(sum((distr_over_time[t] - distr_over_time[t-L])^2))
-        if (distance < 10^(-12)){
+      current_distr <- new_results[[1]]
+      
+      if ((t%%L == 0) & (period>0)){
+        distance <- sqrt(sum((current_distr - distr_over_time[1, ])^2))
+        print(sum((current_distr - distr_over_time[1, ])^2))
+        if (distance < 10^(-12)){ ##!##
           return(list(
-            distr_over_time[-1,],
+            distr_over_time,
             mean_fitness_over_time,
-            opti_G,
+            opti_G[t_max - (period:0)],
             gamete_values)
             )
         }
       }
+      distr_over_time[t%%period+1, ] <- current_distr
+      mean_fitness_over_time[t%%period+1] <- new_results[[2]]
     }
     
   }
 
   if (stoch_magnitude > 0){
       t_max = 50000
-      distr_over_time <- matrix(0, ncol = length(gamete_distr), nrow = t_max+1)
-      distr_over_time[1, ] <- gamete_distr
-      mean_fitness_over_time <- rep(0, t_max)
+      opti_G <- get_optimum(t_max = t_max, amplitude = amplitude, period = period, 
+                        stoch_magnitude = stoch_magnitude)
+      distr_over_time <- matrix(0, ncol = length(gamete_distr), nrow = 10*period)
+      current_distr <- gamete_distr
+      mean_fitness_over_time <- rep(0, 10*period)
       for (t in 1:t_max){
         opti_Gt <- opti_G[t]
-        new_results <- new_distributions(num_loci, distr_over_time[t, ], gamete_values,
+        new_results <- new_distributions(num_loci, current_distr, gamete_values,
                                              gamete_scheme, opti_Gt, dtf_rec, mut_rate)
-        distr_over_time[t+1, ] <- new_results[[1]]
-        mean_fitness_over_time[t] <- new_results[[2]]
+        current_distr <- new_results[[1]]
+        distr_over_time[t%%(10*period)+1, ] <- current_distr
+        mean_fitness_over_time[t%%(10*period)+1] <- new_results[[2]]
      }
   }
   
   return(list(
-    distr_over_time[-1,],
+    distr_over_time,
     mean_fitness_over_time,
-    opti_G,
+    opti_G[t_max - (length(mean_fitness_over_time):0)],
     gamete_values
     ))
 }
 
-one_simul(amplitude, period, stoch_magnitude, strength_selec, mut_rate, num_loci, t_max)
+simul <- one_simul(amplitude, period, stoch_magnitude, strength_selec, mut_rate, num_loci, t_max)
+plot.new()
+plot(rowSums(t(t(simul[[1]])*simul[[4]]*2)), ylim = c(0,1))
+lines(simul[[3]])
 ```
 
 &nbsp;
@@ -769,7 +778,7 @@ for(i in 1:4000){
 colMeans(data)
 ```
 
-But from this point we clearly require optimisation or going to another language, that is why this code has been translated to C++
+But from this point we clearly require optimisation or going to another language, that is why this code has been translated to C++ and not evaluate in this markdown
 
 ## Results from the C++ code
 

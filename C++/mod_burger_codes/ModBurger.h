@@ -29,14 +29,14 @@ using namespace std;
 
 /// Genetics
 const int n = 4; // number of loci
-double u = 0.00005; //mutation rate
-double s = 10; //strength of selection
+double u; //mutation rate
+double s; //strength of selection
 
 /// Temporal variation
-int tmax = 200;
-int L = 24; //period
-double A = 0.5; //amplitude of fluctuation
-double d = 0.1; //magnitude of stochasticity
+int tmax;
+int L; //period
+double A; //amplitude of fluctuation
+double d; //magnitude of stochasticity
 
 //////////////////
 //// VARIABLES ///
@@ -52,6 +52,7 @@ double alpha[n]; //allelic values
 vector<double> p; //gamete frequencies
 
 struct init{
+	vector<double> loci_values;
     vector<double> gamete_values; // phenotypic values of gametes
 	vector<double> gamete_distr; // initial distribution of gametes
 	vector<string> gamete_scheme; // binary of each gametes
@@ -66,8 +67,16 @@ struct one_step{
 
 struct many_steps{
 	vector<vector<double>> all_distr; // the new distribution from eqn 4 Burger
-	vector<double> all_mean_fitness;
-	vector<double> all_var_genetics;
+	vector<double> mean_fitness;
+	vector<double> gamete_values;
+	vector<double> loci_values;
+};
+
+struct results{
+	double mean_gen;
+	double var_gen;
+	double ratio;
+	double geom_fitness;
 };
 
 many_steps data;
@@ -87,8 +96,9 @@ std::uniform_real_distribution<> unif(0.0, 1.0);
 
 one_step new_distributions(vector<double>, vector<vector<vector<double>>>,
 					   vector<double>, double, vector<string>, double, double);
-many_steps one_simul(double, int, double, double, double, int, vector<double>);
+many_steps one_simul(double, double, int, int, vector<double>);
 init initialisation();
 vector<string> permut_gamete(string j, string k, vector<int>);
 double jk_i_recombination(string, string, string, vector<double>);
-vector<double> environment(int, int, double, double);
+vector<double> environment(double, double, int);
+results statistics(vector<vector<double>>, vector<double>, vector <double>, vector<double> mean_fitness);

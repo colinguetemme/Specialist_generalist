@@ -1,42 +1,155 @@
+
+
+
+
+//////////////
+// INCLUDES //
+//////////////
+
 #include "ModBurger.h"
+
+///////////////////
+// MAIN FUNCTION //
+///////////////////
 
 int main(){
 
-	string filename = "results/n";
-	filename.append(to_string(n));
-	filename.append("s");
-	filename.append(to_string(int(s)));
-	filename.append(".csv");
-	cout << filename << endl;
-	// + "n" + to_string(n) + "s" + to_string(s)
-	//		+ "L" + to_string(L) + "d" + to_string(d) + "A" + to_string(A) + ".csv";
+	////////////////
+	// PARAMETERS //
+	////////////////
 
-	std::ofstream outfile (filename);
-	int tmax = 3000; //!// should be 300000 if d=0 or 50000 if d>0
-	vector<double> opti_G = environment(tmax, L, d, A);
+	// a is the amplitude of the sinusoid
+	// L is the period of the sinusoid
+	// d is the stochastic parameter
+	// s is the strength of the selection
+	// u is the mutation rate
+	// n is the number of loci 
+
+	results result;
+	double a = 0.5;
+	int L = 24;
+	double d = 0.1;
+	double s = 5;
+	double u = pow(10, -6);
+	const int n = 4;
+
+	////////////////////
 	
-	int num_sim = 1;
+	int nn = n - 1;
+	int ng = pow(2, n); //number of gametes
+	int ngg = pow(2, nn); // number of recombination positions
+
+	/////////////////
+	// OUTPUT FILE //
+	/////////////////
+
+	// Setting up the output file
+	// Use the R code to quick plot the results
+
+	string filename = "results/";
+	filename.append("a");
+	filename.append(to_string(int(a)));
+	filename.append("_L");
+	filename.append(to_string(L));
+	filename.append("_d");
+	filename.append(to_string(int(d)));
+	filename.append("_s");
+	filename.append(to_string(int(s)));
+	filename.append("_u");
+	filename.append(to_string(int(u)));
+	filename.append("_n");
+	filename.append(to_string(n));
+	filename.append(".csv");
+	std::ofstream outfile (filename);	
+
+	/////////////////
+	// SIMULATIONS //
+	/////////////////
+
+	// The number of simulation for one set of parameter
+	// is suppose to be 4000 in the paper of Burger (//!// very long simulation time)
+
+	int num_sim = 5;
+	vector<vector<double>> (4, vector<double> (num_sim, 0));
+	
 	for (int e = 0; e<num_sim; e++){
-		data = one_simul(0.5, 24, 0, 5, 0, 4, opti_G);
+		cout << "processing simulations: " << e+1 << "/" << num_sim << endl;
+
+		// Creates the varying environment
+		vector<double> opti_G = environment(a, d, L);
+
+		// Do the simulation for this environment
+		data = one_simul(s, u, n, L, opti_G);
+
+		// Calculates the values of interest
+		result = statistics(data.all_distr, data.gamete_values, data.loci_values, data.mean_fitness);
+
+		// Add the results to the ouput file
+		outfile << result.mean_gen << "\t";
+		outfile << result.var_gen << "\t";
+		outfile << result.ratio << "\t";
+		outfile << result.geom_fitness << endl;
 	}
 
-	for (int i = 0; i<data.all_mean_fitness.size(); i++){
-		cout << i << " : " << data.all_mean_fitness[i] << endl;
-		cout << i << " : " << data.all_distr[i][1] << endl;
-		cout << i << " : " << data.all_var_genetics[i] << endl;
-	} 
-
-	// creates the output files with the results
-
+	cout << "DONE \n \n" << endl;
+	cout << "Find the results at: " << filename << endl;
 	outfile.close();
+	
 	return 0;
 }
 
-//------------------------
+///////////////////
+// ENVIRONMENT() //
+///////////////////
+// Inputs:
+//	'a' the amplitude of the sinusoid
+//	'd'	the stochastic factor
+//	'L' the period (number of generations)
+//
+// Outputs:
+//	'opti_G' a vector of double containing the value
+//		optimum genotype through time 
 
-// function to do one simulation
 
-many_steps one_simul(double A, int L, double d, double s, double u, int n, vector<double> opti_G){
+vector<double> environment(double a, double d, int L)
+{	
+	int tmax;
+	if (d==0){
+		// when d == 0, the environment is cyclic with period L 
+		// so we just need the values in one cycle
+		tmax = L;
+	} else {
+		// when d > 0, the simulation stop at 50000 generations Burger(2002)
+		tmax = 50000;
+	}
+
+	vector<double> opti_G(tmax, 0);
+	double var = d * L;
+
+	// a rng following a normal distribution
+	std::normal_distribution<> norm(0, var);
+
+	for (int t = 0; t < tmax; t++)
+	{
+		opti_G[t] = norm(rdgen) + 0.5 + A * sin(2 * M_PI * t / L);
+	}
+
+	return opti_G;
+}
+
+///////////////////
+// ONE_SIMUL() //
+///////////////////
+// Inputs:
+//	's' the strength of selection
+//	'u'	the mutation rate
+//	'n' the number of loci
+//  'opti_G' the optimum genotype
+//
+// Outputs:
+//	'data'  //!//
+
+many_steps one_simul(double s, double u, int n, int L, vector<double> opti_G){
 	
 	init init_values = initialisation();
 
@@ -45,21 +158,27 @@ many_steps one_simul(double A, int L, double d, double s, double u, int n, vecto
 	one_step results;
 	many_steps data;
 
-	vector<vector<double>> all_distr(L, vector<double>(ng, 0));
-	vector<double> mean_fit(L, 0);
-	vector<double> var_gen(L, 0);
-
-	// initialize the distribution
-	data.all_distr = all_distr;
-	data.all_mean_fitness = mean_fit;
-	data.all_var_genetics = var_gen;
-	vector<double> old_distr = init_values.gamete_distr;
-
+	
 	// If there is no stochasticity (meaning d==0)
 	if (d==0){
+
+		vector<vector<double>> all_distr(L, vector<double>(ng, 0));
+		vector<double> mean_fit(L, 0);
+
+
+		// initialize the distribution
+		data.all_distr = all_distr;
+		data.mean_fitness = mean_fit;
+		data.gamete_values = init_values.gamete_values;
+		data.loci_values = init_values.loci_values;
+
+
+		vector<double> old_distr = init_values.gamete_distr;
+
+
 		// Does the simulation
-		for (int t = 0; t<opti_G.size(); t++){
-			results = new_distributions(init_values.gamete_values, init_values.rec_table, old_distr, 0.00002, init_values.gamete_scheme, opti_G[t], s);
+		for (int t = 0; t<300000; t++){
+			results = new_distributions(init_values.gamete_values, init_values.rec_table, old_distr, u, init_values.gamete_scheme, opti_G[t%L], s);
 
 			old_distr = results.new_distr;
 
@@ -72,86 +191,115 @@ many_steps one_simul(double A, int L, double d, double s, double u, int n, vecto
 					distance += pow(old_distr[i] - data.all_distr[0][i], 2);
 				}
 				distance = sqrt(distance);
-				cout << t << " : " << distance << endl;
+				// cout << t << " : " << distance << endl;
 
 				// Check if the distance is higher than 10^-12
 
 				if (distance < pow(10, -12)){
+					cout << "check: " << t << endl;
 					return data;
 				}
 			}
 
-			double mean_g = 0;
-			double var_g = 0;
-			for (int i = 0; i<ng; i++){
-				mean_g += init_values.gamete_values[i]*results.new_distr[i];
-			}
-			for (int i = 0; i<ng; i++){
-				var_g += pow((init_values.gamete_values[i]*results.new_distr[i])-mean_g, 2);
-			}
 
 			data.all_distr[t%L] = results.new_distr;
-			data.all_mean_fitness[t%L] = results.mean_fitness;
-			data.all_var_genetics[t%L] = var_g;
+			data.mean_fitness[t%L] = results.mean_fitness;
 
 			double sum = 0;
 			for (int i = 0; i<ng; i++){
 				sum += data.all_distr[t%L][i];
 			}
-			
-			// // outfile << t << "\t";
-			// // outfile << opti_G[t] << "\t";
-			// // for (int z = 0; z<ng; z++){
-			// // 	outfile << all_distr[t+1][z] << "\t";
-			// // }
-			// // outfile << "\n";	
+	
 		}
 	}
 
 	// if there is stochasticity
 	if (d>0){
-		for (int t = 0; t<opti_G.size(); t++){
-			results = new_distributions(init_values.gamete_values, init_values.rec_table, data.all_distr[t], 0.00002, init_values.gamete_scheme, opti_G[t], s);
-			data.all_distr[t+1] = results.new_distr;
-			data.all_mean_fitness[t] = results.mean_fitness;
+		vector<vector<double>> all_distr(10*L, vector<double>(ng, 0));
+		vector<double> mean_fit(10*L, 0);
 
-			double mean_g = 0;
-			double var_g = 0;
-			for (int i = 0; i<ng; i++){
-				mean_g += init_values.gamete_values[i]*results.new_distr[i];
-			}
-			for (int i = 0; i<ng; i++){
-				var_g += pow((init_values.gamete_values[i]*results.new_distr[i])-mean_g, 2);
-			}
-			cout << var_g << endl;
-			data.all_var_genetics[t] = var_g;
-			// // outfile << t << "\t";
-			// // outfile << opti_G[t] << "\t";
-			// // for (int z = 0; z<ng; z++){
-			// // 	outfile << all_distr[t+1][z] << "\t";
-			// // }
-			// // outfile << "\n";	
+
+		// initialize the distribution
+		data.all_distr = all_distr;
+		data.mean_fitness = mean_fit;
+		data.gamete_values = init_values.gamete_values;
+		data.loci_values = init_values.loci_values;
+
+
+		vector<double> old_distr = init_values.gamete_distr;
+
+		for (int t = 0; t<50000; t++){
+			results = new_distributions(init_values.gamete_values, init_values.rec_table, old_distr, u, init_values.gamete_scheme, opti_G[t], s);
+			data.all_distr[t%(L*10)] = results.new_distr;
+			data.mean_fitness[t%(L*10)] = results.mean_fitness;
+			old_distr = results.new_distr;
+
 		}
 	}
 
 	return data;
-
 }
 
-// environment will define the optimum genotype value through time
+///////////////////
+// ENVIRONMENT() //
+///////////////////
+// Inputs:
+//	'a' the amplitude of the sinusoid
+//	'd'	the stochastic factor
+//	'L' the period (number of generations)
+//
+// Outputs:
+//	'opti_G' a vector of double containing the value
+//		optimum genotype through time 
 
-vector<double> environment(int tmax, int period, double d, double L)
-{
-	opti_G.clear();
-	double var = d * L;
-	std::normal_distribution<> norm(0, var);
-	for (int t = 0; t < tmax; t++)
-	{
-		opti_G.push_back(norm(rdgen) + 0.5 + L * sin(2 * M_PI * t / period));
 
+results statistics(vector<vector<double>> gamete_distr,
+ vector<double> gamete_values,
+ vector <double> loci_values,
+  vector<double> mean_fitness){
+
+	results result;
+
+	double mean_gen = 0;
+	
+	for (int i = 0; i<gamete_distr.size(); i++){
+	    for (int j = 0; j<ng; j++){
+		    mean_gen += gamete_distr[i][j] * gamete_values[i];
+	    }
 	}
-	return opti_G;
+	mean_gen /= gamete_distr.size();
+	result.mean_gen = mean_gen;
+	// Need to check if var for each generation or for each cycle
+	double var_gen = 0;
+	for (int i = 0; i<gamete_distr.size(); i++){
+	    for (int j = 0; j<ng; j++){
+	        var_gen += pow(gamete_distr[i][j] * gamete_values[j] - mean_gen, 2);
+	    }
+	}
+	result.var_gen = var_gen;
+
+	double Vmax = 0;
+	for (int i = 0; i<n; i++){
+		Vmax += pow(loci_values[i], 2);
+	}
+    double ratio = var_gen/(Vmax/2);
+	result.ratio = ratio;
+
+	double geom_fitness = 1;
+	for (int i = 0; i<gamete_distr.size(); i++){
+		geom_fitness *= mean_fitness[i];
+		// cout << mean_fitness[i] << "\t" << geom_fitness << endl;
+	}
+	geom_fitness = pow(geom_fitness, 1/gamete_distr.size());
+	result.geom_fitness = geom_fitness;
+
+	return result;
 }
+// function to do one simulation
+
+
+
+
 
 // initialisation will generate the phenotypic values of each loci,
 // vector of recombination probabilities and the values of recombination
@@ -163,7 +311,7 @@ init initialisation(void)
 	int s, size, g;
 	string bin;
 	double sum = 0.0;
-	//vector<double> alpha(n);
+	vector<double> alpha(n);
 	alpha[0] = unif(rdgen);
 	sum += alpha[0];
 
@@ -224,10 +372,12 @@ init initialisation(void)
 		distr[i] /= sum;
 	}
 
+	init_values.loci_values = alpha;
 	init_values.gamete_values = genotypes;
 	init_values.gamete_distr = distr;
 	init_values.gamete_scheme = gametes;
 	init_values.rec_table = rec_table;
+	
 	return init_values;
 }
 
