@@ -1,7 +1,3 @@
-
-
-
-
 //////////////
 // INCLUDES //
 //////////////
@@ -27,11 +23,11 @@ int main(){
 
 	results result;
 	double a = 0.5;
-	int L = 24;
-	double d = 0.1;
+	int L = 50;
+	double d = 0;
 	double s = 5;
-	double u = pow(10, -6);
-	const int n = 4;
+	double u = 0 ; //pow(10, -6);
+	const int n = 2;
 
 	////////////////////
 	
@@ -46,21 +42,58 @@ int main(){
 	// Setting up the output file
 	// Use the R code to quick plot the results
 
-	string filename = "results/";
+	string filename = "../results/full_distr/";
+	
 	filename.append("a");
-	filename.append(to_string(int(a)));
+	filename.append(to_string(int(a*100)));
 	filename.append("_L");
 	filename.append(to_string(L));
 	filename.append("_d");
-	filename.append(to_string(int(d)));
+	filename.append(to_string(int(d*100)));
 	filename.append("_s");
 	filename.append(to_string(int(s)));
 	filename.append("_u");
-	filename.append(to_string(int(u)));
+	if (u == 0){
+		filename.append(to_string(0));
+	} else {
+		filename.append(to_string(int(log10(u))));
+	}
 	filename.append("_n");
 	filename.append(to_string(n));
-	filename.append(".csv");
-	std::ofstream outfile (filename);	
+	filename.append(".csv");	
+	std::ofstream outfile (filename);
+
+	outfile << "sim_num" << "\t";
+	outfile << "time" << "\t";
+	outfile  << "gamete_num" << "\t";
+	outfile  << "prop" << "\t";
+	outfile  << "gamete_value" << "\n";
+
+
+	string filename_stat = "../results/stats/";
+
+	filename_stat.append("a");
+	filename_stat.append(to_string(int(a*100)));
+	filename_stat.append("_L");
+	filename_stat.append(to_string(L));
+	filename_stat.append("_d");
+	filename_stat.append(to_string(int(d*100)));
+	filename_stat.append("_s");
+	filename_stat.append(to_string(int(s)));
+	filename_stat.append("_u");
+	if (u == 0){
+		filename_stat.append(to_string(0));
+	} else {
+		filename_stat.append(to_string(int(log10(u))));
+	}
+	filename_stat.append("_n");
+	filename_stat.append(to_string(n));
+	filename_stat.append(".csv");
+	std::ofstream outfile_stat (filename_stat);
+
+	outfile_stat << "sim_num" << "\t";
+	outfile_stat << "stat" << "\t";
+	outfile_stat << "value" << "\n";
 
 	/////////////////
 	// SIMULATIONS //
@@ -69,31 +102,51 @@ int main(){
 	// The number of simulation for one set of parameter
 	// is suppose to be 4000 in the paper of Burger (//!// very long simulation time)
 
-	int num_sim = 5;
+	int num_sim = 100;
 	vector<vector<double>> (4, vector<double> (num_sim, 0));
-	
+
 	for (int e = 0; e<num_sim; e++){
-		cout << "processing simulations: " << e+1 << "/" << num_sim << endl;
+		data = many_steps();
+		cout << "\r Processing Simulations: " << e+1 << "/" << num_sim;
 
 		// Creates the varying environment
 		vector<double> opti_G = environment(a, d, L);
 
 		// Do the simulation for this environment
-		data = one_simul(s, u, n, L, opti_G);
+		data = one_simul(s, u, n, L, d, opti_G);
+		
+		int keep_end = 0;
+		if (d>0){
+			keep_end = 50000 - (10*L);
+		}
+
+		for (int i = 0; i<data.mean_fitness.size(); i++){
+			outfile << e << "\t" << i << "\t" << -1 << "\t" << opti_G[i+keep_end] <<  "\t" << 0.1 << "\n";
+		}
+
+		for (int i = 0; i<data.mean_fitness.size(); i++){
+			for (int j = 0; j<ng; j++){
+				outfile << e << "\t" << i << "\t" << j << "\t" << data.all_distr[i][j] << "\t" << data.gamete_values[j] << "\n";
+			}
+		}
 
 		// Calculates the values of interest
-		result = statistics(data.all_distr, data.gamete_values, data.loci_values, data.mean_fitness);
+		result = statistics(data.all_distr, data.gamete_values, data.loci_values, data.mean_fitness, n);
 
 		// Add the results to the ouput file
-		outfile << result.mean_gen << "\t";
-		outfile << result.var_gen << "\t";
-		outfile << result.ratio << "\t";
-		outfile << result.geom_fitness << endl;
+		outfile_stat << e << "\t" << "mean_gen" << "\t" << result.mean_gen << "\n";
+		outfile_stat << e << "\t" << "var_gen" << "\t" << result.var_gen << "\n";
+		outfile_stat << e << "\t" << "ratio" << "\t" << result.ratio << "\n";
+		outfile_stat << e << "\t" << "geom_fitness" << "\t" << result.geom_fitness << "\n";
+		
 	}
 
-	cout << "DONE \n \n" << endl;
-	cout << "Find the results at: " << filename << endl;
 	outfile.close();
+	outfile_stat.close();
+
+	cout << "\n\n" << "DONE" << "\n" << endl;
+	cout << "Find the results at: " << filename_stat << "\n" << "\n" << endl;
+	
 	
 	return 0;
 }
@@ -124,22 +177,22 @@ vector<double> environment(double a, double d, int L)
 	}
 
 	vector<double> opti_G(tmax, 0);
-	double var = d * L;
+	double var = d * a;
 
 	// a rng following a normal distribution
 	std::normal_distribution<> norm(0, var);
 
 	for (int t = 0; t < tmax; t++)
 	{
-		opti_G[t] = norm(rdgen) + 0.5 + A * sin(2 * M_PI * t / L);
+		opti_G[t] = norm(rdgen) + 0.5 + a * sin(2 * M_PI * t / L);
 	}
 
 	return opti_G;
 }
 
-///////////////////
+/////////////////
 // ONE_SIMUL() //
-///////////////////
+/////////////////
 // Inputs:
 //	's' the strength of selection
 //	'u'	the mutation rate
@@ -149,7 +202,7 @@ vector<double> environment(double a, double d, int L)
 // Outputs:
 //	'data'  //!//
 
-many_steps one_simul(double s, double u, int n, int L, vector<double> opti_G){
+many_steps one_simul(double s, double u, int n, int L, double d, vector<double> opti_G){
 	
 	init init_values = initialisation();
 
@@ -172,7 +225,6 @@ many_steps one_simul(double s, double u, int n, int L, vector<double> opti_G){
 		data.gamete_values = init_values.gamete_values;
 		data.loci_values = init_values.loci_values;
 
-
 		vector<double> old_distr = init_values.gamete_distr;
 
 
@@ -191,17 +243,15 @@ many_steps one_simul(double s, double u, int n, int L, vector<double> opti_G){
 					distance += pow(old_distr[i] - data.all_distr[0][i], 2);
 				}
 				distance = sqrt(distance);
-				// cout << t << " : " << distance << endl;
 
 				// Check if the distance is higher than 10^-12
-
 				if (distance < pow(10, -12)){
-					cout << "check: " << t << endl;
+
 					return data;
 				}
 			}
 
-
+			// Update the distributions
 			data.all_distr[t%L] = results.new_distr;
 			data.mean_fitness[t%L] = results.mean_fitness;
 
@@ -228,91 +278,119 @@ many_steps one_simul(double s, double u, int n, int L, vector<double> opti_G){
 
 		vector<double> old_distr = init_values.gamete_distr;
 
+		// Update the distributions
 		for (int t = 0; t<50000; t++){
 			results = new_distributions(init_values.gamete_values, init_values.rec_table, old_distr, u, init_values.gamete_scheme, opti_G[t], s);
 			data.all_distr[t%(L*10)] = results.new_distr;
 			data.mean_fitness[t%(L*10)] = results.mean_fitness;
-			old_distr = results.new_distr;
-
+			old_distr = results.new_distr; 
 		}
 	}
 
 	return data;
 }
 
-///////////////////
-// ENVIRONMENT() //
-///////////////////
+//////////////////
+// STATISTICS() //
+//////////////////
+
+
 // Inputs:
-//	'a' the amplitude of the sinusoid
-//	'd'	the stochastic factor
-//	'L' the period (number of generations)
+//	'gamete_distr' the 2D vector containing the distribution 
+// 		of each gametes for the kept generations
+//	'gamete_values'	the genotypic value of each gamete
+//	'loci_value' the genotypic value of the positive allele
+//		at each loci
+//	'mean_fitness' the mean fitness of the population for the
+//		kept generations
 //
 // Outputs:
-//	'opti_G' a vector of double containing the value
-//		optimum genotype through time 
+//	'result.':
+//		- 'mean_gen' the averaged value of the mean genotype in the population
+//		- 'var_gen' the averaged genetic variance
+//		- 'ratio' the ratio between the variance and Vmax (the maximum possible variance)
+//		- 'geom_mean' the geometric mean of the fitness
 
 
 results statistics(vector<vector<double>> gamete_distr,
  vector<double> gamete_values,
  vector <double> loci_values,
-  vector<double> mean_fitness){
+  vector<double> mean_fitness,
+  int n){
 
 	results result;
 
+	// The averaged value of the mean genotype in the population
 	double mean_gen = 0;
-	
+	vector<double> mean_gen_gen(gamete_distr.size(), 0);
 	for (int i = 0; i<gamete_distr.size(); i++){
 	    for (int j = 0; j<ng; j++){
-		    mean_gen += gamete_distr[i][j] * gamete_values[i];
+		    mean_gen += gamete_distr[i][j] * gamete_values[j];
+			mean_gen_gen[i] += gamete_distr[i][j] * gamete_values[j];
 	    }
 	}
+	
 	mean_gen /= gamete_distr.size();
+
 	result.mean_gen = mean_gen;
-	// Need to check if var for each generation or for each cycle
+
+	// The averaged genetic variance
+	// Need to check if var for each generation or for each cycle //!//
 	double var_gen = 0;
 	for (int i = 0; i<gamete_distr.size(); i++){
 	    for (int j = 0; j<ng; j++){
-	        var_gen += pow(gamete_distr[i][j] * gamete_values[j] - mean_gen, 2);
+
+	        var_gen += pow(gamete_distr[i][j] * gamete_values[j] - mean_gen_gen[i], 2);
 	    }
 	}
+	var_gen /= gamete_distr.size();
 	result.var_gen = var_gen;
 
+	// The ratio between the variance and Vmax (the maximum possible variance)
 	double Vmax = 0;
 	for (int i = 0; i<n; i++){
 		Vmax += pow(loci_values[i], 2);
 	}
-    double ratio = var_gen/(Vmax/2);
+    double ratio = var_gen / (Vmax/2) / ng;
 	result.ratio = ratio;
 
+	// The geometric mean of the fitness
 	double geom_fitness = 1;
+	double root = gamete_distr.size();
 	for (int i = 0; i<gamete_distr.size(); i++){
-		geom_fitness *= mean_fitness[i];
-		// cout << mean_fitness[i] << "\t" << geom_fitness << endl;
+		geom_fitness *= pow(mean_fitness[i], 1/root);
 	}
-	geom_fitness = pow(geom_fitness, 1/gamete_distr.size());
 	result.geom_fitness = geom_fitness;
 
 	return result;
 }
-// function to do one simulation
+
+//////////////////////
+// INITIALISATION() //
+//////////////////////
 
 
+// Inputs:
+//
+// Outputs:
+//	'init_values.':
+//		- 'loci_values' the genotypic value of the positive allele at each loci
+//		- 'gamete_values' the genotypic value of each gamete
+//		- 'gamete_scheme' the allelic composition of each possible gamete (with
+//				0, the allele of value 0, and 1, the positive allele)
+//		- 'rec_table' the 3D vector containting the probability to obtain gamete i
+//				from gamete j and k by recmobination
 
-
-
-// initialisation will generate the phenotypic values of each loci,
-// vector of recombination probabilities and the values of recombination
-// probabilities from gamete j/k to gamete i.
 
 init initialisation(void)
 {	
 	init init_values;
-	int s, size, g;
-	string bin;
 	double sum = 0.0;
+
+
 	vector<double> alpha(n);
 	alpha[0] = unif(rdgen);
+
 	sum += alpha[0];
 
 	for (int i = 0; i < n - 1; i++)
@@ -322,14 +400,15 @@ init initialisation(void)
 		r.push_back(0.0);
 		r[i] = unif(rdgen) / 2.0; //initialise recombination rate
 	}
-	// cout << "Allelic values: " << endl;
+
 	for (int i = 0; i < n; i++)
 	{
 		alpha[i] = 0.5 * alpha[i] / sum; //scale alleles
 
-		// cout << alpha[i] << " ";
 	}
-	// cout << endl;
+
+	vector<string> gametes;
+	vector<double> genotypes;
 
 	//initialise gametes
 	for (int i = 0; i < ng; i++)
@@ -380,6 +459,18 @@ init initialisation(void)
 	
 	return init_values;
 }
+
+//////////////////////////
+// JK_I_RECOMBINATION() //
+//////////////////////////
+// Inputs:
+//	'i' the string corresponding to gamete i
+//	'j' the string corresponding to gamete j
+//	'k' the string corresponding to gamete k
+//	'r' the vector of rate of recombination
+//
+// Outputs:
+//	'R' the probability to goes from jk to i by recombination
 
 double jk_i_recombination(string i, string j, string k, vector<double> r)
 {
@@ -438,9 +529,20 @@ double jk_i_recombination(string i, string j, string k, vector<double> r)
 			}
 		}
 	}
-	//cout << R << endl;
 	return R;
 }
+
+//////////////////////////
+// PERMUT_GAMETE() //
+//////////////////////////
+// Inputs:
+//	'i' the string corresponding to gamete i
+//	'j' the string corresponding to gamete j
+//	'k' the string corresponding to gamete k
+//	'r' the vector of rate of recombination
+//
+// Outputs:
+//	'R' the probability to goes from jk to i by recombination
 
 vector<string> permut_gamete(string j, string k, vector<int> rec)
 {
@@ -475,17 +577,15 @@ vector<string> permut_gamete(string j, string k, vector<int> rec)
 one_step new_distributions(vector<double> gamete_values, vector<vector<vector<double>>> dtf_rec,
 					   vector<double> gamete_distr, double mut_rate, vector<string> gam_bin, double opti_Gt, double strength)
 {
-	//cout << opti_Gt << endl
 	int ng = pow(2, n);
 	vector<double> p_star(ng, 0);
-	double mean_fitness = 0;
+
 	double sum = 0;
 		for (int i = 0; i<ng; i++){
 			sum += gamete_distr[i];
 		}
 
-		
-	// cout << "s = " << strength << endl;
+	double mean_fitness = 0;
 	for (int j = 0; j < ng; j++)
 	{
 		for (int k = j; k < ng; k++)
@@ -494,7 +594,7 @@ one_step new_distributions(vector<double> gamete_values, vector<vector<vector<do
 			mean_fitness += exp(-strength * pow(gamete_values[j] + gamete_values[k] - opti_Gt, 2)) * gamete_distr[j] * gamete_distr[k];
 		}
 	}
-
+	
 	for (int i = 0; i < ng; i++)
 	{
 		for (int j = 0; j < ng; j++)

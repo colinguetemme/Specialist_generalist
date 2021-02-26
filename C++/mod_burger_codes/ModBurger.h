@@ -96,9 +96,9 @@ std::uniform_real_distribution<> unif(0.0, 1.0);
 
 one_step new_distributions(vector<double>, vector<vector<vector<double>>>,
 					   vector<double>, double, vector<string>, double, double);
-many_steps one_simul(double, double, int, int, vector<double>);
+many_steps one_simul(double, double, int, int, double, vector<double>);
 init initialisation();
 vector<string> permut_gamete(string j, string k, vector<int>);
 double jk_i_recombination(string, string, string, vector<double>);
 vector<double> environment(double, double, int);
-results statistics(vector<vector<double>>, vector<double>, vector <double>, vector<double> mean_fitness);
+results statistics(vector<vector<double>>, vector<double>, vector <double>, vector<double>, int);
