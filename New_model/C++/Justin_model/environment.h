@@ -1,3 +1,4 @@
+
 #pragma once
 
 # include <math.h>
@@ -5,15 +6,14 @@
 # include <random>
 
 #include "parameters.h"
+#include "model.h"
 
 using namespace std;
 
-
 // Random numbers generators
 // seed random number generator
-std::random_device rd;
-std::mt19937 rdgen(rd());
-std::uniform_real_distribution<> unif(0.0, 1.0);
+
+//std::uniform_real_distribution<> unif(0.0, 1.0);
 
 /**
  * @brief The class that will store the environment
@@ -32,9 +32,14 @@ class environment{
     // Functions
     /**
      * @brief initialise the environment, maybe will be change to the constructor
+     * 
+     * Need to initialise the parameters before, parameter will include the amplitude, the period and
+     * the stochasticity
+     * 
      * @param param an object of type parameter as define in 'parameters.h'
+     * 
      */
     void initialise(parameters);
 
     void output();
-}chromo
+};

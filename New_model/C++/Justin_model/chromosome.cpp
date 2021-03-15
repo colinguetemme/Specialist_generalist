@@ -1,13 +1,11 @@
+
 #include  "chromosome.h"
 
 
-Chromosome::Chromosome() {
-	nMut = 0;
-	Nho = 0;
+chromosome::chromosome() {
 }
 
-
-Chromosome::~Chromosome() {
+chromosome::~chromosome() {
 }
 
 ///////////////
@@ -15,25 +13,34 @@ Chromosome::~Chromosome() {
 ///////////////
 
 
-void Chromosome::deleteChromo(void) {
+void chromosome::delete_chromo(void) {
 	if (!mutations.empty()) mutations.clear();
 }
 
 
+/**
+ * @brief Add randomly a mutation on the chromosome defined as a map
+ * 
+ * @param para the parameters of the individuals
+ */
+void chromosome::add_mutation(para_ind para) {
 
-double Chromosome::add_mutation(int homolog, double position, double selection, double dominance) {
-	double viability;
-	mutation mut;
-	mut.homol = homolog;
-	mut.s = selection; 
-	mut.h = dominance;
+	std::random_device rd; //!//
+	std::mt19937 gen(rd());
 
-	if (mutations.find(position) == mutations.end()) { // No mutation at that position
-		nMut++;
+	std::uniform_real_distribution<> runif(0,1);
+
+	double position = runif(gen);
+
+	if (mutations.find(position) == mutations.end()) { // No mutation at that position DO WE NEED IT //!//
+		mutation mut;
+		double boundary1 = runif(gen);
+		double boundary2 = runif(gen);
+		mut.min = min(boundary1, boundary2);
+		mut.max = max(boundary1, boundary2);
+		mut.value = para.distr_mut_value(gen);
+
 		mutations[position] = mut;
-		viability = (1.0 - mut.h * mut.s);
+		n_mut++;
 	}
-	else viability = 1.0;
-
-	return viability;
 }

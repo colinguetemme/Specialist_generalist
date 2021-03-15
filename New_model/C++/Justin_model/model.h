@@ -6,7 +6,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#pragma once
 
 //#include <io.h>
 #include <vector>
@@ -23,6 +22,11 @@
 #include <iterator>
 #include <bitset> 
 
+# include "parameters.h"
+# include "individual.h"
+# include "environment.h"
+
+using namespace std;
 
 
 

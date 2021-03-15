@@ -7,12 +7,15 @@
 
 #include <map>
 #include <set>
+#include <random>
 
 #include <stdio.h>
 #include <fstream>
 #include <iostream>
 
-//#include "Parameters.h"
+#include "parameters.h"
+
+using namespace std;
 
 ////////////////
 // DEFINITION //
@@ -34,22 +37,22 @@ struct mutation {
 typedef std::map<double, mutation, std::less<double>> MapMuts; 
 
 // Map containing all the mutation position
-//typedef std::map<double, int, std::less<double>> MapPos;
+typedef std::map<double, int, std::less<double>> MapPos;
 
 //map containing continuous allele coding for a trait: map<position, allele>
 //typedef std::map<double, double, std::less<double>> MapTrait;
 
 
 /**
- * @brief hou
+ * @brief Class describing the continuous chromosome and 
  * 
  */
-class Chromosome {
+class chromosome {
 public:
 
     // Constructor / Destructor
-	Chromosome();
-	~Chromosome();
+	chromosome();
+	~chromosome();
 
     ///////////////////
 	// THE VARIABLES //
@@ -65,25 +68,14 @@ public:
     /** @brief Add a mutation to the continuous chromosome, 
      * the mutation parameters will be randomly sampled when the function is called
      *
-     * @param homolog if the mutation is homologue (0 on 1, 1 on 1, 2 on 2)
-     * @param position position in the continuous chromosome
-     * @param selection not used
-     * @param dominance not used
-     * 
-     * @return The viability of the Chromosome
-     * 
+     * @param param the structure containing all the parameters of the individual
      */
-	double add_mutation( 
-		int, // homologue
-		double, // position
-		double, // s (selection coefficient)
-		double // h (dominance coefficient)
-		); 
+	void add_mutation(para_ind); 
 
     /**
     * @brief Delete all the mutations on a chromosome
     * 
     */
-	void deleteChromo();
+	void delete_chromo();
 
 };

@@ -163,7 +163,14 @@ int main(){
 //	'opti_G' a vector of double containing the value
 //		optimum genotype through time 
 
-
+/**
+ * @brief 
+ * 
+ * @param a the amplitude of the
+ * @param d 
+ * @param L 
+ * @return vector<double> 
+ */
 vector<double> environment(double a, double d, int L)
 {	
 	int tmax;

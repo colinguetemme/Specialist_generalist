@@ -2,14 +2,15 @@
     "tasks": [
         {
             "type": "cppbuild",
-            "label": "C/C++: g++ build active file",
             "command": "/usr/bin/g++",
+            "label": "g++.exe build active file",
             "args": [
                 "-g",
-                "${file}",
-                "-o",
-                "${fileDirname}/${fileBasenameNoExtension}"
-            ],
+                "${fileDirname}/**.cpp",
+                //"${fileDirname}\\**.h",
+                 "-o",
+                "${fileDirname}/${fileBasenameNoExtension}.exe",
+        ],
             "options": {
                 "cwd": "${workspaceFolder}"
             },
