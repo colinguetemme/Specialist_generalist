@@ -29,7 +29,7 @@ class environment{
     // Variables
     vector<double> optimum; // Vector of optimum genotype fluctuating in time;
 
-    // Functions
+    // METHODS
     /**
      * @brief initialise the environment, maybe will be change to the constructor
      * 
@@ -39,7 +39,7 @@ class environment{
      * @param param an object of type parameter as define in 'parameters.h'
      * 
      */
-    void initialise(parameters);
+    void initialise(para_env);
 
-    void output();
+    void output(string);
 };

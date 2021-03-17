@@ -6,35 +6,48 @@ environment::environment(){
 environment::~environment(){
 }
 
-void environment::initialise(parameters para){	// Need to add a parameter
+
+/**
+ * @brief Initialise the environment, 
+ * 
+ * @param para the 
+ */
+void environment::initialise(para_env para){	// Need to add a parameter
 
 	std::random_device rd; //!//
 	std::mt19937 gen(rd());
 
 	int tmax;
-	if (para.env.stochastic == 0.0){
+	if (para.stochastic == 0.0){
 		// when d == 0, the environment is cyclic with period L 
-		// so we just need the values in one cycle
-		tmax = para.env.period;
-		tmax = 10000; //!// TEST
+		// so we just need the values in one cycle and loop it
+		tmax = 1000; //!// TEST
 	} else {
-		// when d > 0, the simulation stop at 50000 generations Burger(2002)
-		tmax = 10000;
+		// when d > 0, the simulation stop at xx generations
+		tmax = 1000;
 	}
 
 	vector<double> opti_G(tmax, 0);
 
-	
-	double mean_env = (para.env.min + para.env.max) / 2;
-	double range_env = para.env.max - para.env.min;
+	// For now since only using sin(), we ca describe 
+	double mean_env = (para.min + para.max) / 2;
+	double range_env = para.max - para.min;
 
 	// a rng following a normal distribution
-	std::normal_distribution<> norm(0, para.env.var);
+	std::normal_distribution<> norm(0, para.var);
 
 	for (int t = 0; t < tmax; t++)
 	{
-		opti_G[t] = mean_env + para.env.amplitude * range_env * sin(2 * M_PI * t / para.env.period);
+		opti_G[t] = mean_env + para.amplitude * range_env * sin(2 * M_PI * t / para.period);
 	}
     optimum = opti_G;
+}
+
+void environment::output(string out_file){
+	std::ofstream outfile (out_file);
+	for (int i = 0; i<optimum.size(); i++){
+		outfile << i+1 << "," << optimum[i] << "\n";
+	}
+    outfile.close();
 }
 

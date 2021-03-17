@@ -20,6 +20,28 @@ void individual::fit_value(double env_value){
  
 }
 
+/**
+ * @brief 
+ * 
+ * @param file 
+ * @param n_step 
+ * @param min_val 
+ * @param max_val 
+ */
+void individual::output(std::ofstream& outfile, double n_step, double min_val, double max_val){
+    double keep = fit_val;
+    double env_value;
+    
+	for (int i = 0; i<n_step; i++){
+        env_value = min_val + (i/n_step) * (max_val - min_val);
+        fit_value(env_value);
+		outfile << fit_val << "," ;
+	}
+    outfile << "\n";
+    fit_val = keep;
+};
+
+
 population::population(int pop_size){
     ind = vector<individual>(pop_size);
 }
@@ -96,3 +118,42 @@ void population::new_generation(double env_value, para_ind param){
         }
     }
 }
+
+void population::output_one_step(std::ofstream& outfile){
+    for (int i = 0; i<1000; i++){
+        outfile << i << "\t";
+	}
+    outfile << "\n";
+	for (int i = 0; i<ind.size(); i++){
+        ind[i].output(outfile);
+	}
+};
+
+/**
+ * @brief careful change the fit_val of the individual
+ * 
+ * @param outfile 
+ */
+void population::output_mean(std::ofstream& outfile){
+    double n_step = 1000;
+    double min_val = 0;
+    double max_val = 1;
+    double env_value;
+    double sum = 0;
+
+
+    vector<double> pop(ind.size(), 0);
+    for (int i = 0; i<n_step; i++){
+	    for (int j = 0; j<ind.size(); j++){
+            env_value = min_val + (i/n_step) * (max_val - min_val);
+            ind[j].fit_value(env_value);
+		    pop[j] = ind[j].fit_val;
+	    }
+        for (int j = 0; j<ind.size(); j++){ 
+            sum += pop[j];
+        }
+        outfile << sum / ind.size() << ",";
+        sum = 0;
+	}
+    outfile << "\n";
+};
