@@ -15,7 +15,7 @@
  */
 parameters::parameters(
     double a, double d, int L, double min, double max,
-    double mr, double mvm, double vvm
+    double mr, double mvm, double vvm, bool t_o
     ){
     env.amplitude = a;
     env.stochastic = d;
@@ -26,8 +26,9 @@ parameters::parameters(
     ind.mut_rate = mr;
     ind.mean_val_mut = mvm;
     ind.var_val_mut = vvm;
+    ind.trade_off = t_o;
     ind.distr_mut_rat = std::poisson_distribution<>(ind.mut_rate);
-    ind.distr_mut_value = std::normal_distribution<>(ind.mean_val_mut, ind.var_val_mut);
+    ind.distr_mut_value = std::normal_distribution<>(ind.mean_val_mut, ind.var_val_mut);  
 }
 
 parameters::~parameters(){

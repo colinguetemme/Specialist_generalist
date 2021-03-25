@@ -12,10 +12,16 @@ void individual::fit_value(double env_value){
  
     for(iter = chr.mutations.begin(); iter != chr.mutations.end(); iter++){
 
+        // Check if the mutation range include the current environmental value
         if(iter->second.min < env_value && iter->second.max > env_value){
-
-           fit_val += iter->second.value;
+            // If it is the case add the value of the mutation to the fitness value
+           fit_val += iter->second.value; 
         }  
+    }
+
+    // Check that the fitness value is not below 0
+    if (fit_val < 0){
+        fit_val = 0;
     }
  
 }
@@ -77,8 +83,12 @@ void population::new_generation(double env_value, para_ind param){
     int n_offspring = 0;
 
     for(int i = 0; i < ind.size(); i++){
-        ind[i].fit_value(env_value);
-        pop_fit.push_back(ind[i].fit_val);
+        ind[i].fit_value(env_value); // Get the fitness of individual i for that environmental value
+        pop_fit.push_back(ind[i].fit_val); // add this fitness to a vector
+
+        //!// To increase the effect of a positive fitness
+        // pop_fit.push_back(pow(ind[i].fit_val, 2)); // add this fitness to a vector
+
         /* CHANGE POPULATION SIZE, NOT DONE
         //!// n_offspring = std::poisson_distribution<>(ind[i].fit_val)(gen); 
 
@@ -130,7 +140,7 @@ void population::output_one_step(std::ofstream& outfile){
 };
 
 /**
- * @brief careful change the fit_val of the individual
+ * @brief //!// Careful change the fit_val (fitness_value) of the individual
  * 
  * @param outfile 
  */

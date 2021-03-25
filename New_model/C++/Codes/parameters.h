@@ -29,7 +29,8 @@ struct para_ind{
 
     // The pdf of the the fitness value of a mutation following a normal law (?)
     std::normal_distribution<> distr_mut_value; 
-    
+
+    bool trade_off; 
 };
 
 // The class gathering all the parameters for the model
@@ -39,7 +40,7 @@ class parameters{
     // Constructor / Destructor
     parameters(
         double, double, int, double, double, // environment
-        double, double, double // individual
+        double, double, double, bool // individual
         );
     ~parameters();
 

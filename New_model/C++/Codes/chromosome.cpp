@@ -30,7 +30,7 @@ void chromosome::add_mutation(para_ind para) {
 	std::mt19937 gen(rd());
 
 	// The require distribution for the mutation's range of effect
-	std::uniform_real_distribution<> runif(0,1);
+	std::uniform_real_distribution<> runif(-3,4);
 
 	double position = runif(gen);
 
@@ -48,6 +48,24 @@ void chromosome::add_mutation(para_ind para) {
 
 		// Add the mutation on the map of mutation of that chromosome
 		mutations[position] = mut;
-		n_mut++; // needed ? //!//
+
+
+		// Add a second mutation to generate the trade-off of this mutation
+		// is not counted in the number of mutation (because only one)
+		if (para.trade_off == 1){
+			double position_t_o = runif(gen); // _t_o stands for trade-off
+			if (mutations.find(position_t_o) == mutations.end()) {
+				mutation mut_t_o;
+
+				double boundary1 = runif(gen);
+				double boundary2 = runif(gen);
+				mut_t_o.min = min(boundary1, boundary2);
+				mut_t_o.max = max(boundary1, boundary2);
+				mut_t_o.value = -mut.value/10; //!// should be a parameter and maybe different if positive and negative
+				mutations[position_t_o] = mut_t_o;
+			}
+
+			n_mut++; // needed ? //!//
+		}
 	}
 }
