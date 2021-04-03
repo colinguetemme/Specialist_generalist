@@ -24,6 +24,7 @@ class population{
     ~population();
 vector<individual> ind;
 void new_generation(double, para_ind);
+void new_generation_K(double, para_ind, int);
 void output_one_step(std::ofstream&);
 void output_mean(std::ofstream&);
 };

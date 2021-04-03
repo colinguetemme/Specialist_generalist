@@ -39,7 +39,7 @@ class environment{
      * @param param an object of type parameter as define in 'parameters.h'
      * 
      */
-    void initialise(para_env);
-
+    void initialise_sinus(para_env);
+    void initialise_custom(para_env, vector<double>);
     void output(string);
 };

@@ -102,6 +102,6 @@ many_steps one_simul(double, double, int, int, double, vector<double>, bool);
 init initialisation(bool);
 vector<string> permut_gamete(string j, string k, vector<int>);
 double jk_i_recombination(string, string, string, vector<double>);
-vector<double> environment(double, double, int, bool);
+vector<double> environment(double, double, int);
 vector<double> environment2(vector<double> , int, double, bool);
 results statistics(vector<vector<double>>, vector<double>, vector <double>, vector<double>, int);

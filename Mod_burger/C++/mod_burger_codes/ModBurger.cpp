@@ -10,6 +10,10 @@
  * very high genetic variance and low rate to a specialist species, because this adapt has the time to 
  * specialise to the new environment each time.
  * 
+ * TODO: correct the problem of statistic
+ * TODO: get clearer outputs
+ * TODO: Check haploid works
+ * 
  * @version 0.1
  * @date 2021-03-22
  * @copyright Copyright (c) 2021
@@ -39,8 +43,8 @@ int main(){
 	double s = 5; // Strength of selection
 	double u = 0 ; // Mutation rate
 	// double u = pow(10, -6); 
-	const int n = 2; // Number of loci
-	bool diploid = 0; // If the population is haploid (= 0) or diploid (= 1)
+	const int n = 4; // Number of loci
+	bool diploid = 1; // If the population is haploid (= 0) or diploid (= 1)
 
 	////////////////////
 	
@@ -91,9 +95,9 @@ int main(){
 	std::ofstream outfile_stat (filename_stat);
 	
 	// Headers of the csv
-	outfile_stat << "sim_num" << ",";
-	outfile_stat << "stat" << ",";
-	outfile_stat << "value" << "\n";
+	outfile << "sim_num" << "," << "time" << "," << "gamete_num" << "," << "prop"  << "," << "gamete_val" << "\n";
+	outfile_stat << "sim_num" << "," << "stat" << "," << "value" << "\n";
+
 
 	/////////////////
 	// SIMULATIONS //
@@ -104,15 +108,15 @@ int main(){
 	int num_sim = 100;
 
 	for (int e = 0; e<num_sim; e++){
-		data = many_steps(); // gather the results of one simulaion
-		cout << "\r Processing Simulations: " << e+1 << "/" << num_sim;
 
+		data = many_steps(); // gather the results of one simulaion
+		
 		// The optimum genotype in a varying environment 
-		vector<double> opti_G = environment(a, d, L, diploid);
+		vector<double> opti_G = environment(a, d, L);
 
 		// Do the simulation for this environment
 		data = one_simul(s, u, n, L, d, opti_G, diploid);
-		
+
 		int keep_end = 0; // Only important for stochastic, index for the last values of the environment
 		if (d>0){
 			keep_end = 50000 - (10*L); // Start from the last 10 cycles
@@ -121,7 +125,7 @@ int main(){
 		// In the csv, the environment will be added to same dataframe as the other gamete distribution
 		// but either of having a gamete index it will have the index -1
 		for (int i = 0; i<data.mean_fitness.size(); i++){
-			outfile << e << "," << i << "," << -1 << "," << opti_G[i+keep_end] <<  "," << 0.1 << "\n";
+			outfile << e << "," << i << "," << -1 << "," << opti_G[i+keep_end] <<  "," << 0.1 << "\n"; //!// hy 0.1
 		}
 
 		// Add the gamete distribution for each gamete
@@ -139,6 +143,8 @@ int main(){
 		outfile_stat << e << "," << "var_gen" << "," << result.var_gen << "\n";
 		outfile_stat << e << "," << "ratio" << "," << result.ratio << "\n";
 		outfile_stat << e << "," << "geom_fitness" << "," << result.geom_fitness << "\n";
+
+		cout << "\r Processing Simulations: " << e+1 << "/" << num_sim;
 		
 	}
 
@@ -149,7 +155,6 @@ int main(){
 
 	cout << "\n\n" << "DONE" << "\n" << endl;
 	cout << "Find the results at: " << filename_stat << "\n" << "\n" << endl;
-	
 	
 	return 0;
 }
@@ -174,7 +179,7 @@ int main(){
  * @param L the period (number of generation) of the sinusoid
  * @return a vector with the optimum genotype at each time 
  */
-vector<double> environment(double a, double d, int L, bool dipl)
+vector<double> environment(double a, double d, int L)
 {	
 	int tmax; // The maximum number of generation to look at
 	if (d==0){
@@ -193,11 +198,9 @@ vector<double> environment(double a, double d, int L, bool dipl)
 	std::normal_distribution<> norm(0, var);
 
 	double coeff; // if diploid one gamete should count for 0.5 of the genotypic value;
-	if (dipl == 1){
-		coeff = 0.5;
-	} else {
-		coeff = 1;
-	}
+	
+	coeff = 0.5;
+	
 	for (int t = 0; t < tmax; t++)
 	{
 		opti_G[t] = norm(rdgen) + coeff + a * sin(2 * M_PI * t / L);
@@ -224,11 +227,11 @@ vector<double> environment2(vector<double> states, int L, double d, bool dipl){
 
 		double mean_states = 0;
 		double var_states = 0;
-		for(int i = 0; i>states.size(); i++){
+		for(int i = 0; i<states.size(); i++){
 			mean_states += states[i];
 		}
 		mean_states /= states.size();
-		for(int i = 0; i>states.size(); i++){
+		for(int i = 0; i<states.size(); i++){
 			var_states += pow((states[i]-mean_states),2);
 		}
 
@@ -240,15 +243,16 @@ vector<double> environment2(vector<double> states, int L, double d, bool dipl){
 			opti_G[i] = states[index] + norm(rdgen);
 		}
 	
-		return opti_G;
+		
 
 	} else {
 		int index;
-		for (int i = 0; i>(L*states.size()); i++){
+		for (int i = 0; i<(L*states.size()); i++){
 			index = floor(i%(states.size()*L)/L); // The time step in a cycle
 			opti_G[i] = states[index];
 		}
 	}
+	return opti_G;
 }
 
 ///////////////
@@ -308,7 +312,7 @@ many_steps one_simul(double s, double u, int n, int L, double d, vector<double> 
 			// Test if the population fluctuation is stable from one cycle to the other
 			if ((t%L == 0) & (L>0)){
 	
-				// Calculate the distribution distance between the two cycles;
+				// Calculate the distribution distance between the two cycles; //!//
 				double distance = 0;
 				for (int i = 0; i<ng; i++){
 					distance += pow(old_distr[i] - data.all_distr[0][i], 2);
@@ -317,7 +321,8 @@ many_steps one_simul(double s, double u, int n, int L, double d, vector<double> 
 
 				// Check if the distance is smaller than 10^-12 in which case we stop the simulation
 				if (distance < pow(10, -12)){
-
+					cout << t << endl;
+					cout << distance << endl;
 					return data;
 				}
 			}
@@ -677,7 +682,7 @@ one_step new_distributions(vector<double> gamete_values, vector<vector<vector<do
 	double mean_fitness = 0;
 	
 	
-	if (dipl == 1){ // DIPLOID
+	if (dipl == 1){ // DIPLOID // 
 		
 		// Calculate the mean fitness
 		for (int j = 0; j < ng; j++)
@@ -700,7 +705,7 @@ one_step new_distributions(vector<double> gamete_values, vector<vector<vector<do
 			}
 		}
 
-	} else { // HAPLOID
+	} else { // HAPLOID // 
 		// Calculate the mean fitness
 		for (int i = 0; i < ng; i++) 
 			{
@@ -757,4 +762,5 @@ one_step new_distributions(vector<double> gamete_values, vector<vector<vector<do
 	next_step.var_genetics = var;
 	return next_step;
 }
+
 

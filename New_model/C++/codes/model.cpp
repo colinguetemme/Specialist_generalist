@@ -13,8 +13,11 @@
  * To know the fitness of an individual for a given parameter value, we do the some of all the mutations for
  * which the range include the environmental parameter.
  * 
- * TODO: add a strength of selection rather than just fitness corresponding to probability to have an offsrping
- * TODO: problem of range of niche and range of environmental variation
+ * TODO: Every x generations output the all phenotype
+ * TODO: red noise (positively autocorrelated with parameter l)
+ * TODO: mutpop, keep track of each mutation in the simulation, maybe just the end
+ * TODO: add a non constant population model (just a K model)
+ * TODO: add expression level (each value of the mutation multiply by expression level)
  * 
  * The parts of the code that need particular attention (bugs, optimization, ...)
  * are commented with //!//
@@ -34,34 +37,47 @@ std::mt19937 gen(rd());
 
 int main() {
     
-    
     ////////////////
     // PARAMETERS //
     ////////////////
 
+    // TO DECLARE WHICH TYPE OF ENVIRONMENT TO USE
+    // options: "sinus", "custom"
+    string env_type = "sinus";
+
     double env_min = 0; // The minimal value of the environment
     double env_max = 1; // The maximal value of the environment
-    double amplitude = 0.5; // the amplitude of the fluctuation of the environ
-    double stochasticity = 0; // The stochasticity coefficient
+    double amplitude = 0.95; // the amplitude of the fluctuation of the environ
+    double stochasticity = 0; // The stochasticity coefficient //!// CHECK FOR CUSTOM
     int period = 100; // The period of 1 cycle in number of generation
 
-    int burn_gen = 500;  // The number of generation with no output (to reach equilibrium)
-    int keep_gen = 100;  // The number of generation with ouput (after the burn)
+    vector<double> custom_states {0.1, 0.9}; // 
 
-    int pop_size = 10; // The population size
-    double mut_rate = 2; // The mutation rate (lambda parameter of a poisson distribution)
-    double mean_val_mut = -0.002; // The mean value of a mutation (effect on fitness)
-    double var_val_mut = 0.1; // The variance of the mutation value (effect on fitness)
+    int burn_gen = 0;  // The number of generation with no output (to reach equilibrium)
+    int keep_gen = 1000;  // The number of generation with ouput (after the burn)
+    int step_keep = 5; // Output one generation out of step_keep generation (e.g. 1 every 5)
+    int tmax = burn_gen + keep_gen;
+
+    int pop_size = 100; // The population size
+    double mut_rate = 0.01; // The mutation rate (lambda parameter of a poisson distribution)
+    double prop_del = 0.5; // The proportion of deleterious mutation (compare to beneficial)
+    double mean_val_mut = 0.05; // The mean value of a mutation (effect on fitness)
+    double var_val_mut = 0.01; // The variance of the mutation value (effect on fitness)
+    //!// Deleterious should be 1000 more frequent than beneficial
+    bool uni = 1; //!// in test, if = 1 all the value of parameter are equally likely to be in a mutation
+    double min_fit = 0.05; //!// not added, minimal value of the fitness to 
 
     // If trade_off is on, each mutation will lead to another mutation.
-    // This mutation will have a different range and a value of -1/10 of the original value
+    // This mutation will have a different range and a value of -1/2 of the original value
     bool trade_off = 0; 
+    bool trade_off_del = 0; // also trade-off for deleterious
+    double trade_off_strength = 0.3; // The strength of the trade off (proportion of the original value)
 
     // Initialise the parameters
 
     parameters param( // contains all the parameters see the parameter.h for more info
-        amplitude, stochasticity, period, env_min, env_max, // environment
-        mut_rate, mean_val_mut, var_val_mut, trade_off // individual
+        amplitude, stochasticity, period, env_min, env_max, tmax, // environment
+        mut_rate, mean_val_mut, var_val_mut, prop_del, trade_off, trade_off_del, trade_off_strength // individual
         );
 
     /////////////////
@@ -84,25 +100,35 @@ int main() {
     ///////////////
 
     environment env;
-    env.initialise(param.env);
+
+    if (env_type == "sinus"){
+        env.initialise_sinus(param.env);
+    } else if (env_type == "custom"){
+        env.initialise_custom(param.env, custom_states);
+    }
+     
     env.output(file_env);
     population pop(pop_size);
 
     // Burn the first generations to reach an equilbrium
     for (int i = 0; i<burn_gen; i++){
         cout << "burnt: "  << i << " / " << burn_gen << endl;
-        pop.new_generation(env.optimum[i], param.ind);
+        //pop.new_generation(env.optimum[i], param.ind);
+        pop.new_generation_K(env.optimum[i], param.ind, 10000); //!// not working change the population size
     }
 
     // Keep the equilibrium generations
     for (int i = 0; i<keep_gen; i++){
-        cout << "kept: "  << i << " / " << keep_gen << endl;
-        pop.new_generation(env.optimum[i+burn_gen], param.ind);
+        
+        //pop.new_generation(env.optimum[i], param.ind);
+        pop.new_generation_K(env.optimum[i], param.ind, 10000); //!// not working change the population size
 
-        //!// heavy compute, should be remove or optimize if possible,
+        //!// heavy compute, should be minimize the number of iteration here,
         // since go through all mutations several times
-
-        pop.output_mean(ind_outfile); 
+        if (i % step_keep == 0){
+            cout << "kept: "  << i << " / " << keep_gen << endl;
+            pop.output_mean(ind_outfile); 
+        }
     }
 
     std::map<double, mutation>::iterator iter;
@@ -113,11 +139,8 @@ int main() {
     ind_outfile.close();
     env_outfile.close();
 
-    cout << "\n \n DONE \n \n";
+    cout << "\n DONE \n \n";
     return 0;
 }
-
-
-
 
 

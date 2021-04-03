@@ -20,8 +20,8 @@ void individual::fit_value(double env_value){
     }
 
     // Check that the fitness value is not below 0
-    if (fit_val < 0){
-        fit_val = 0;
+    if (fit_val < 0.05){ //!// add the min_fit value
+        fit_val = 0.05;
     }
  
 }
@@ -75,7 +75,6 @@ void population::new_generation(double env_value, para_ind param){
     // Calculate the fitness of each individual and add the sampled number of offspring in the 
     // new population.
 
-    int K = 1000; //!// to add as parameter the limit capacity of the environment
     vector<individual> new_pop; // the vector that will contain the new generation
 
     vector<double> pop_fit; // the vector of fitness of each individual
@@ -124,11 +123,70 @@ void population::new_generation(double env_value, para_ind param){
         n_mut =  param.distr_mut_rat(gen);
 
         for (int m = 0; m < n_mut; m++){
+            ind[i].chr.add_mutation2(param); //!// basic = add_mutation (not add_mutation2)
+        }
+    }
+}
+
+void population::new_generation_K(double env_value, para_ind param, int K){
+
+    // RNG
+    std::random_device rd;
+    std::mt19937 gen(rd());
+
+    // Calculate the fitness of each individual and add the sampled number of offspring in the 
+    // new population.
+
+    vector<individual> new_pop; // the vector that will contain the new generation
+
+    double tot_fit = 0; // The total fitness of the mutation considering the 
+    int n_offspring = 0;
+
+    for(int i = 0; i < ind.size(); i++){
+        ind[i].fit_value(env_value); // Get the fitness of individual i for that environmental value
+        tot_fit += ind[i].fit_val;
+    }
+
+    double mean_fit = tot_fit/ind.size();
+    double r = mean_fit - 1;
+    double r_star = 0;
+
+    if (r > 0.0){
+        r_star = r*(1-(ind.size()/K));
+    } else {
+        r_star = r*(ind.size()/K);
+    }
+
+    for(int i = 0; i < ind.size(); i++){
+
+        double fit_i = ind[i].fit_val / (r_star + 1);
+        n_offspring = std::poisson_distribution<>(fit_i)(gen); 
+
+        //cout << n_offspring << endl;
+        for (int j = 0; j<n_offspring; j++){ //!// MAYBE CAN REMOVE THIS FORLOOP
+            new_pop.push_back(ind[i]);
+        }
+    }
+    
+    cout << new_pop.size() << endl;
+    int n_mut;
+    ind = new_pop;
+
+    for (int i = 0; i<ind.size(); i++){
+        n_mut =  param.distr_mut_rat(gen);
+
+        for (int m = 0; m < n_mut; m++){
+
             ind[i].chr.add_mutation(param);
         }
     }
 }
 
+/**
+ * @brief 
+ * 
+ * @param outfile 
+ */
 void population::output_one_step(std::ofstream& outfile){
     for (int i = 0; i<1000; i++){
         outfile << i << "\t";

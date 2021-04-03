@@ -10,6 +10,7 @@ using namespace std;
 struct para_env{
     double min; // The minimum value of the environment
     double max; // The maximum value of the environment
+    int tmax;
 
     double amplitude; // The amplitude of the variation
     int period; // The period of one cycle in number of generations
@@ -30,7 +31,11 @@ struct para_ind{
     // The pdf of the the fitness value of a mutation following a normal law (?)
     std::normal_distribution<> distr_mut_value; 
 
-    bool trade_off; 
+    double prop_del;
+
+    bool trade_off; // if == 1, each mutation will have also on opposite effect somewhere else
+    bool trade_off_del; // if == 0, only beneficial mutation lead to trade-off
+    double trade_off_strength; // The strength of the side effect (act as a proportion of the original effect)
 };
 
 // The class gathering all the parameters for the model
@@ -39,8 +44,8 @@ class parameters{
 
     // Constructor / Destructor
     parameters(
-        double, double, int, double, double, // environment
-        double, double, double, bool // individual
+        double, double, int, double, double, int, // environment
+        double, double, double, double, bool, bool, double // individual
         );
     ~parameters();
 

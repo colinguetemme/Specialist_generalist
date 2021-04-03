@@ -71,6 +71,7 @@ public:
      * @param param the structure containing all the parameters of the individual
      */
 	void add_mutation(para_ind); 
+    void add_mutation2(para_ind); 
 
     /**
     * @brief Delete all the mutations on a chromosome
